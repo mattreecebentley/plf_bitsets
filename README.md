@@ -35,4 +35,4 @@ The second template parameter on each bitset, 'storage_type', allows the user to
 
 Again, see the project page for more details.
 
-All three bitsets are under an ethical license "Computing for Good". You can find more information about it here.
+All three bitsets are under an ethical license "Computing for Good". You can find more information about it here: https://plflib.org/computing_for_good_license.htm
