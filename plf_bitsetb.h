@@ -5,15 +5,15 @@
 //
 // Permission is granted to use this code by anyone and for any purpose, including commercial applications, and to alter it and redistribute it freely, subject to the following restrictions:
 //
-// 1.    The origin of this code must not be misrepresented; you must not claim that you wrote the original code. If you use this code in software, an acknowledgement in the product documentation would be appreciated but is not required.
-// 2.    Altered code versions must be plainly marked as such, and must not be misrepresented as being the original code.
-// 3.    This notice may not be removed or altered from any code distribution, including altered code versions.
-// 4.    This code and altered code versions may not be used by groups, companies, individuals or in software whose primary or partial purpose is to:
-//     a.    Promote addiction or intoxication.
-//     b.    Cause harm to, or violate the rights of, other sentient beings.
-//     c.    Distribute, obtain or utilize software, media or other materials without the consent of the owners.
-//     d.    Deliberately spread misinformation or encourage dishonesty.
-//     e.    Pursue personal profit at the cost of broad-scale environmental harm.
+// 1. 	The origin of this code must not be misrepresented; you must not claim that you wrote the original code. If you use this code in software, an acknowledgement in the product documentation would be appreciated but is not required.
+// 2. 	Altered code versions must be plainly marked as such, and must not be misrepresented as being the original code.
+// 3. 	This notice may not be removed or altered from any code distribution, including altered code versions.
+// 4. 	This code and altered code versions may not be used by groups, companies, individuals or in software whose primary or partial purpose is to:
+// 	 a.	 Promote addiction or intoxication.
+// 	 b.	 Cause harm to, or violate the rights of, other sentient beings.
+// 	 c.	 Distribute, obtain or utilize software, media or other materials without the consent of the owners.
+// 	 d.	 Deliberately spread misinformation or encourage dishonesty.
+// 	 e.	 Pursue personal profit at the cost of broad-scale environmental harm.
 
 
 
@@ -70,7 +70,7 @@
 		#define PLF_NOEXCEPT noexcept
 	#endif
 	// The following line is a little different from other plf:: containers because we need constexpr basic_string in order to make the to_string function constexpr:
-	#if __cplusplus > 201704L && ((((defined(__clang__) && __clang_major__ >= 15) || (defined(__GNUC__) && (__GNUC__ >= 12))) && ((defined(_LIBCPP_VERSION) && _LIBCPP_VERSION >= 15) || (defined(__GLIBCXX__) &&  _GLIBCXX_RELEASE >= 12))) || (!defined(__clang__) && !defined(__GNUC__)))
+	#if __cplusplus > 201704L && ((((defined(__clang__) && __clang_major__ >= 15) || (defined(__GNUC__) && (__GNUC__ >= 12))) && ((defined(_LIBCPP_VERSION) && _LIBCPP_VERSION >= 15) || (defined(__GLIBCXX__) &&	_GLIBCXX_RELEASE >= 12))) || (!defined(__clang__) && !defined(__GNUC__)))
 		#undef PLF_CONSTFUNC
 		#define PLF_CONSTFUNC constexpr
 		#define PLF_CPP20_SUPPORT
@@ -235,11 +235,11 @@ public:
 	{
 		if (value)
 		{
-   		set_range(begin, end);
+			set_range(begin, end);
 		}
 		else
 		{
-		   reset_range(begin, end);
+			reset_range(begin, end);
 		}
 	}
 
@@ -807,9 +807,7 @@ public:
 		#ifdef PLF_EXCEPTIONS_SUPPORT
 			if (source.total_size != total_size) throw std::length_error("Bitsetb's do not have the same size, cannot swap.");
 		#endif
-		*this ^= source;
-		source ^= *this;
-		*this ^= source;
+		for (std::size_t current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) std::swap(buffer[current], source.buffer[current]);
 	}
 };
 

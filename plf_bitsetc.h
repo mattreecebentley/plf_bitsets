@@ -5,15 +5,15 @@
 //
 // Permission is granted to use this code by anyone and for any purpose, including commercial applications, and to alter it and redistribute it freely, subject to the following restrictions:
 //
-// 1.    The origin of this code must not be misrepresented; you must not claim that you wrote the original code. If you use this code in software, an acknowledgement in the product documentation would be appreciated but is not required.
-// 2.    Altered code versions must be plainly marked as such, and must not be misrepresented as being the original code.
-// 3.    This notice may not be removed or altered from any code distribution, including altered code versions.
-// 4.    This code and altered code versions may not be used by groups, companies, individuals or in software whose primary or partial purpose is to:
-//     a.    Promote addiction or intoxication.
-//     b.    Cause harm to, or violate the rights of, other sentient beings.
-//     c.    Distribute, obtain or utilize software, media or other materials without the consent of the owners.
-//     d.    Deliberately spread misinformation or encourage dishonesty.
-//     e.    Pursue personal profit at the cost of broad-scale environmental harm.
+// 1. 	The origin of this code must not be misrepresented; you must not claim that you wrote the original code. If you use this code in software, an acknowledgement in the product documentation would be appreciated but is not required.
+// 2. 	Altered code versions must be plainly marked as such, and must not be misrepresented as being the original code.
+// 3. 	This notice may not be removed or altered from any code distribution, including altered code versions.
+// 4. 	This code and altered code versions may not be used by groups, companies, individuals or in software whose primary or partial purpose is to:
+// 	 a.	 Promote addiction or intoxication.
+// 	 b.	 Cause harm to, or violate the rights of, other sentient beings.
+// 	 c.	 Distribute, obtain or utilize software, media or other materials without the consent of the owners.
+// 	 d.	 Deliberately spread misinformation or encourage dishonesty.
+// 	 e.	 Pursue personal profit at the cost of broad-scale environmental harm.
 
 
 
@@ -170,7 +170,7 @@ namespace std
 	{
 		a.swap(b);
 	}
-	
+
 
 
 	template <typename storage_type>
