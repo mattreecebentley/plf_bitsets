@@ -85,9 +85,10 @@
 #define PLF_ARRAY_CAPACITY_BITS (PLF_ARRAY_CAPACITY_BYTES * 8)
 
 
+#include <cassert>
 #include <cmath> // log10
-#include <cstring>	// memset, memcmp, size_t
-#include <string>	// std::basic_string
+#include <cstring> // memset, memcmp, size_t
+#include <string> // std::basic_string
 #include <stdexcept> // std::out_of_range
 #include <limits>  // std::numeric_limits
 #include <bit>  // std::pop_count, std::countr_one, std::countr_zero
@@ -100,7 +101,7 @@ namespace plf
 {
 
 
-template<typename storage_type = std::size_t>
+template<class storage_type = std::size_t>
 class bitsetb
 {
 private:
@@ -127,8 +128,9 @@ private:
 
 
 public:
+	typedef std::size_t size_type;
 
-	PLF_CONSTFUNC bitsetb(storage_type * const supplied_buffer, const std::size_t size):
+	PLF_CONSTFUNC bitsetb(storage_type * const supplied_buffer, const size_type size):
 		buffer(supplied_buffer),
 		total_size(size)
 	{
@@ -137,7 +139,7 @@ public:
 
 
 
-	PLF_CONSTFUNC bitsetb(storage_type * const supplied_buffer, const std::size_t size, const bitsetb &source):
+	PLF_CONSTFUNC bitsetb(storage_type * const supplied_buffer, const size_type size, const bitsetb &source):
 		buffer(supplied_buffer),
 		total_size(size)
 	{
@@ -159,14 +161,14 @@ public:
 
 
 
-	PLF_CONSTFUNC bool operator [] (const std::size_t index) const
+	PLF_CONSTFUNC bool operator [] (const size_type index) const
 	{
 		return static_cast<bool>((buffer[index / PLF_TYPE_BITWIDTH] >> (index % PLF_TYPE_BITWIDTH)) & storage_type(1));
 	}
 
 
 
-	PLF_CONSTFUNC bool test(const std::size_t index) const
+	PLF_CONSTFUNC bool test(const size_type index) const
 	{
 		#ifdef PLF_EXCEPTIONS_SUPPORT
 			if (index >= total_size) throw std::out_of_range("Index larger than size of bitset");
@@ -184,23 +186,23 @@ public:
 
 
 
-	PLF_CONSTFUNC void set(const std::size_t index)
+	PLF_CONSTFUNC void set(const size_type index)
 	{
 		buffer[index / PLF_TYPE_BITWIDTH] |= storage_type(1) << (index % PLF_TYPE_BITWIDTH);
 	}
 
 
 
-	PLF_CONSTFUNC void set(const std::size_t index, const bool value)
+	PLF_CONSTFUNC void set(const size_type index, const bool value)
 	{
- 		const std::size_t blockindex = index / PLF_TYPE_BITWIDTH, shift = index % PLF_TYPE_BITWIDTH;
+ 		const size_type blockindex = index / PLF_TYPE_BITWIDTH, shift = index % PLF_TYPE_BITWIDTH;
 		buffer[blockindex] = (buffer[blockindex] & ~(storage_type(1) << shift)) | (static_cast<storage_type>(value) << shift);
 	}
 
 
 
 
-	PLF_CONSTFUNC void set_range(const std::size_t begin, const std::size_t end)
+	PLF_CONSTFUNC void set_range(const size_type begin, const size_type end)
 	{
 		if (begin == end)
 		#ifdef PLF_CPP20_SUPPORT
@@ -210,7 +212,7 @@ public:
 			return;
 		}
 
-		const std::size_t begin_type_index = begin / PLF_TYPE_BITWIDTH, end_type_index = (end - 1) / PLF_TYPE_BITWIDTH, distance_to_end_storage = PLF_TYPE_BITWIDTH - (end % PLF_TYPE_BITWIDTH);
+		const size_type begin_type_index = begin / PLF_TYPE_BITWIDTH, end_type_index = (end - 1) / PLF_TYPE_BITWIDTH, distance_to_end_storage = PLF_TYPE_BITWIDTH - (end % PLF_TYPE_BITWIDTH);
 
 		if (begin_type_index != end_type_index) // ie. if first and last bit to be set are not in the same storage_type unit
 		{
@@ -231,7 +233,7 @@ public:
 
 
 
-	PLF_CONSTFUNC void set_range(const std::size_t begin, const std::size_t end, const bool value)
+	PLF_CONSTFUNC void set_range(const size_type begin, const size_type end, const bool value)
 	{
 		if (value)
 		{
@@ -252,14 +254,14 @@ public:
 
 
 
-	PLF_CONSTFUNC void reset(const std::size_t index)
+	PLF_CONSTFUNC void reset(const size_type index)
 	{
 		buffer[index / PLF_TYPE_BITWIDTH] &= ~(storage_type(1) << (index % PLF_TYPE_BITWIDTH));
 	}
 
 
 
-	PLF_CONSTFUNC void reset_range(const std::size_t begin, const std::size_t end)
+	PLF_CONSTFUNC void reset_range(const size_type begin, const size_type end)
 	{
 		if (begin == end)
 		#ifdef PLF_CPP20_SUPPORT
@@ -269,7 +271,7 @@ public:
 			return;
 		}
 
-		const std::size_t begin_type_index = begin / PLF_TYPE_BITWIDTH, end_type_index = (end - 1) / PLF_TYPE_BITWIDTH, distance_to_end_storage = PLF_TYPE_BITWIDTH - (end % PLF_TYPE_BITWIDTH);
+		const size_type begin_type_index = begin / PLF_TYPE_BITWIDTH, end_type_index = (end - 1) / PLF_TYPE_BITWIDTH, distance_to_end_storage = PLF_TYPE_BITWIDTH - (end % PLF_TYPE_BITWIDTH);
 
 		if (begin_type_index != end_type_index)
 		{
@@ -287,13 +289,13 @@ public:
 
 	PLF_CONSTFUNC void flip()
 	{
-		for (std::size_t current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) buffer[current] = ~buffer[current];
+		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) buffer[current] = ~buffer[current];
 		set_overflow_to_zero();
 	}
 
 
 
-	PLF_CONSTFUNC void flip(const std::size_t index)
+	PLF_CONSTFUNC void flip(const size_type index)
 	{
 		buffer[index / PLF_TYPE_BITWIDTH] ^= storage_type(1) << (index % PLF_TYPE_BITWIDTH);
 	}
@@ -304,7 +306,7 @@ public:
 	{
 		set_overflow_to_one();
 
-		for (std::size_t current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current)
+		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current)
 		{
 			if (buffer[current] != std::numeric_limits<storage_type>::max())
 			{
@@ -321,7 +323,7 @@ public:
 
 	PLF_CONSTFUNC bool any() const
 	{
-		for (std::size_t current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) if (buffer[current] != 0) return true;
+		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) if (buffer[current] != 0) return true;
 		return false;
 	}
 
@@ -334,11 +336,11 @@ public:
 
 
 
-	PLF_CONSTFUNC std::size_t count() const PLF_NOEXCEPT
+	PLF_CONSTFUNC size_type count() const PLF_NOEXCEPT
 	{
-		std::size_t total = 0;
+		size_type total = 0;
 
-		for (std::size_t current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current)
+		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current)
 		{
 			#ifdef PLF_CPP20_SUPPORT
 				total += std::popcount(buffer[current]); // leverage CPU intrinsics for faster performance
@@ -352,9 +354,9 @@ public:
 
 
 
-	PLF_CONSTFUNC std::size_t first_one() const
+	PLF_CONSTFUNC size_type first_one() const
 	{
-		for (std::size_t current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current)
+		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current)
 		{
 			if (buffer[current] != 0)
 			{
@@ -369,14 +371,57 @@ public:
 			}
 		}
 
-		return std::numeric_limits<std::size_t>::max();
+		return std::numeric_limits<size_type>::max();
 	}
 
 
 
-	PLF_CONSTFUNC std::size_t last_one() const
+	PLF_CONSTFUNC size_type next_one(size_type index) const
 	{
-		std::size_t current = PLF_ARRAY_CAPACITY;
+		if (index >= total_size - 1) return std::numeric_limits<size_type>::max();
+
+		size_type current = index / PLF_TYPE_BITWIDTH;
+		index = (index % PLF_TYPE_BITWIDTH) + 1; // convert to sub-index within word
+
+		const storage_type current_word = buffer[current] >> index;
+
+		if (index != PLF_TYPE_BITWIDTH && current_word != 0)
+		{
+			#ifdef PLF_CPP20_SUPPORT
+				return (current * PLF_TYPE_BITWIDTH) + std::countr_zero(current_word) + index;
+			#else
+				for (storage_type bit_index = 0; ; ++bit_index)
+				{
+					if (current_word & (storage_type(1) << bit_index)) return (current * PLF_TYPE_BITWIDTH) + bit_index + index;
+				}
+			#endif
+		}
+		else
+		{
+			for (const size_type end = PLF_ARRAY_CAPACITY; ++current != end;)
+			{
+				if (buffer[current] != 0)
+				{
+					#ifdef PLF_CPP20_SUPPORT
+						return (current * PLF_TYPE_BITWIDTH) + std::countr_zero(buffer[current]);
+					#else
+						for (storage_type bit_index = 0, value = buffer[current]; ; ++bit_index)
+						{
+							if (value & (storage_type(1) << bit_index)) return (current * PLF_TYPE_BITWIDTH) + bit_index;
+						}
+					#endif
+				}
+			}
+		}
+
+		return std::numeric_limits<size_type>::max();
+	}
+
+
+
+	PLF_CONSTFUNC size_type last_one() const
+	{
+		size_type current = PLF_ARRAY_CAPACITY;
 
 		do
 		{
@@ -393,21 +438,64 @@ public:
 			}
 		} while (current != 0);
 
-		return std::numeric_limits<std::size_t>::max();
+		return std::numeric_limits<size_type>::max();
 	}
 
 
 
-	PLF_CONSTFUNC std::size_t first_zero()
+	PLF_CONSTFUNC size_type prev_one(size_type index) const
+	{
+		if (index == 0 || index >= total_size) return std::numeric_limits<size_type>::max();
+
+		size_type current = index / PLF_TYPE_BITWIDTH;
+		index %= PLF_TYPE_BITWIDTH;
+
+		const storage_type current_word = buffer[current] << (PLF_TYPE_BITWIDTH - index);
+
+		if (index != 0 && current_word != 0)
+		{
+			#ifdef PLF_CPP20_SUPPORT
+				return ((current * PLF_TYPE_BITWIDTH) + index - 1) - std::countl_zero(current_word);
+			#else
+				for (storage_type bit_index = PLF_TYPE_BITWIDTH - 1; ; --bit_index)
+				{
+					if (current_word & (storage_type(1) << bit_index)) return (current * PLF_TYPE_BITWIDTH) + bit_index - (PLF_TYPE_BITWIDTH - index);
+				}
+			#endif
+		}
+		else
+		{
+			while (current != 0)
+			{
+				if (buffer[--current] != 0)
+				{
+					#ifdef PLF_CPP20_SUPPORT
+						return (((current + 1) * PLF_TYPE_BITWIDTH) - std::countl_zero(buffer[current])) - 1;
+					#else
+						for (storage_type bit_index = PLF_TYPE_BITWIDTH - 1, value = buffer[current]; ; --bit_index)
+						{
+							if (value & (storage_type(1) << bit_index)) return (current * PLF_TYPE_BITWIDTH) + bit_index;
+						}
+					#endif
+				}
+			}
+		 }
+
+		return std::numeric_limits<size_type>::max();
+	}
+
+
+
+	PLF_CONSTFUNC size_type first_zero()
 	{
 		set_overflow_to_one();
 
-		for (std::size_t current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current)
+		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current)
 		{
 			if (buffer[current] != std::numeric_limits<storage_type>::max())
 			{
 				#ifdef PLF_CPP20_SUPPORT
-					const std::size_t index = (current * PLF_TYPE_BITWIDTH) + std::countr_one(buffer[current]);
+					const size_type index = (current * PLF_TYPE_BITWIDTH) + std::countr_one(buffer[current]);
 					set_overflow_to_zero();
 					return index;
 				#else
@@ -424,22 +512,80 @@ public:
 		}
 
 		set_overflow_to_zero();
-		return std::numeric_limits<std::size_t>::max();
+		return std::numeric_limits<size_type>::max();
 	}
 
 
 
-	PLF_CONSTFUNC std::size_t last_zero()
+	PLF_CONSTFUNC size_type next_zero(size_type index)
+	{
+		if (index >= total_size - 1) return std::numeric_limits<size_type>::max();
+
+		set_overflow_to_one(); // even current word might be back word of the bitset
+
+		size_type current = index / PLF_TYPE_BITWIDTH;
+		index = (index % PLF_TYPE_BITWIDTH) + 1; // convert to sub-index within word, add one
+
+		const storage_type current_word = buffer[current] | (std::numeric_limits<storage_type>::max() >> (PLF_TYPE_BITWIDTH - index)); // Set leading bits up-to-and-including the supplied index to 1
+
+		if (index != PLF_TYPE_BITWIDTH && current_word != std::numeric_limits<storage_type>::max())
+		{
+			#ifdef PLF_CPP20_SUPPORT
+				index = (current * PLF_TYPE_BITWIDTH) + std::countr_one(current_word);
+				set_overflow_to_zero();
+				return index;
+			#else
+				for (;; ++index)
+				{
+					if (!(current_word & (storage_type(1) << index)))
+					{
+						set_overflow_to_zero();
+						return (current * PLF_TYPE_BITWIDTH) + index;
+					}
+				}
+			#endif
+		}
+		else
+		{
+			for (const size_type end = PLF_ARRAY_CAPACITY; ++current != end;)
+			{
+				if (buffer[current] != std::numeric_limits<storage_type>::max())
+				{
+					#ifdef PLF_CPP20_SUPPORT
+						index = (current * PLF_TYPE_BITWIDTH) + std::countr_one(buffer[current]);
+						set_overflow_to_zero();
+						return index;
+					#else
+						for (storage_type bit_index = 0, value = buffer[current]; ; ++bit_index)
+						{
+							if (!(value & (storage_type(1) << bit_index)))
+							{
+								set_overflow_to_zero();
+								return (current * PLF_TYPE_BITWIDTH) + bit_index;
+							}
+						}
+					#endif
+				}
+			}
+		}
+
+		set_overflow_to_zero();
+		return std::numeric_limits<size_type>::max();
+	}
+
+
+
+	PLF_CONSTFUNC size_type last_zero()
 	{
 		set_overflow_to_one();
-		std::size_t current = PLF_ARRAY_CAPACITY;
+		size_type current = PLF_ARRAY_CAPACITY;
 
 		do
 		{
 			if (buffer[--current] != std::numeric_limits<storage_type>::max())
 			{
 				#ifdef PLF_CPP20_SUPPORT
-					const std::size_t index = (((current + 1) * PLF_TYPE_BITWIDTH) - std::countl_one(buffer[current])) - 1;
+					const size_type index = (((current + 1) * PLF_TYPE_BITWIDTH) - std::countl_one(buffer[current])) - 1;
 					set_overflow_to_zero();
 					return index;
 				#else
@@ -456,7 +602,65 @@ public:
 		} while (current != 0);
 
 		set_overflow_to_zero();
-		return std::numeric_limits<std::size_t>::max();
+		return std::numeric_limits<size_type>::max();
+	}
+
+
+
+	PLF_CONSTFUNC size_type prev_zero(size_type index)
+	{
+		if (index == 0 || index >= total_size) return std::numeric_limits<size_type>::max();
+
+		set_overflow_to_one();
+
+		size_type current = index / PLF_TYPE_BITWIDTH;
+		index %= PLF_TYPE_BITWIDTH;
+
+		const storage_type current_word = buffer[current] | (std::numeric_limits<storage_type>::max() << index);
+
+		if (index != 0 && current_word != std::numeric_limits<storage_type>::max())
+		{
+			#ifdef PLF_CPP20_SUPPORT
+				index = (((current + 1) * PLF_TYPE_BITWIDTH) - std::countl_one(buffer[current])) - 1;
+				set_overflow_to_zero();
+				return index;
+			#else
+				while (true)
+				{
+					if (!(current_word & (storage_type(1) << --index)))
+					{
+						set_overflow_to_zero();
+						return (current * PLF_TYPE_BITWIDTH) + index;
+					}
+				}
+			#endif
+		}
+		else
+		{
+			while (current != 0)
+			{
+				if (buffer[--current] != std::numeric_limits<storage_type>::max())
+				{
+					#ifdef PLF_CPP20_SUPPORT
+						index = (((current + 1) * PLF_TYPE_BITWIDTH) - std::countl_one(buffer[current])) - 1;
+						set_overflow_to_zero();
+						return index;
+					#else
+						for (storage_type bit_index = PLF_TYPE_BITWIDTH - 1, value = buffer[current]; ; --bit_index)
+						{
+							if (!(value & (storage_type(1) << bit_index)))
+							{
+								set_overflow_to_zero();
+								return (current * PLF_TYPE_BITWIDTH) + bit_index;
+							}
+						}
+					#endif
+				}
+			}
+		}
+
+		set_overflow_to_zero();
+		return std::numeric_limits<size_type>::max();
 	}
 
 
@@ -495,14 +699,14 @@ public:
 
 
 
-	PLF_CONSTFUNC std::size_t size() const PLF_NOEXCEPT
+	PLF_CONSTFUNC size_type size() const PLF_NOEXCEPT
  	{
  		return total_size;
  	}
 
 
 
-	PLF_CONSTFUNC void change_size(const std::size_t new_size)
+	PLF_CONSTFUNC void change_size(const size_type new_size)
  	{
 		if (new_size > total_size) reset_range(total_size, new_size);
 		total_size = new_size;
@@ -515,7 +719,7 @@ public:
 		#ifdef PLF_EXCEPTIONS_SUPPORT
 			if (source.total_size < total_size) throw std::length_error("Source smaller than *this, cannot interprocess.");
 		#endif
-		for (std::size_t current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) buffer[current] &= source.buffer[current];
+		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) buffer[current] &= source.buffer[current];
 		return *this;
 	}
 
@@ -526,7 +730,7 @@ public:
 		#ifdef PLF_EXCEPTIONS_SUPPORT
 			if (source.total_size < total_size) throw std::length_error("Source smaller than *this, cannot interprocess.");
 		#endif
-		for (std::size_t current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) buffer[current] |= source.buffer[current];
+		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) buffer[current] |= source.buffer[current];
 		return *this;
 	}
 
@@ -537,26 +741,26 @@ public:
 		#ifdef PLF_EXCEPTIONS_SUPPORT
 			if (source.total_size < total_size) throw std::length_error("Source smaller than *this, cannot interprocess.");
 		#endif
-		for (std::size_t current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) buffer[current] ^= source.buffer[current];
+		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) buffer[current] ^= source.buffer[current];
 		return *this;
 	}
 
 
 
-	PLF_CONSTFUNC bitsetb & operator >>= (std::size_t shift_amount) PLF_NOEXCEPT
+	PLF_CONSTFUNC bitsetb & operator >>= (size_type shift_amount) PLF_NOEXCEPT
 	{
-		std::size_t end = PLF_ARRAY_CAPACITY - 1;
+		size_type end = PLF_ARRAY_CAPACITY - 1;
 
 		if (shift_amount >= PLF_TYPE_BITWIDTH)
 		{
-			std::size_t current = 0;
+			size_type current = 0;
 
 			if (shift_amount < total_size)
 			#ifdef PLF_CPP20_SUPPORT
 				[[likely]]
 			#endif
 			{
-				std::size_t current_source = shift_amount / PLF_TYPE_BITWIDTH;
+				size_type current_source = shift_amount / PLF_TYPE_BITWIDTH;
 
 				if ((shift_amount %= PLF_TYPE_BITWIDTH) != 0)
 				{
@@ -586,7 +790,7 @@ public:
 		{
 			const storage_type shifter = PLF_TYPE_BITWIDTH - shift_amount;
 
-			for (std::size_t current = 0; current != end; ++current)
+			for (size_type current = 0; current != end; ++current)
 			{
 				buffer[current] = (buffer[current] >> shift_amount) | (buffer[current + 1] << shifter);
 			}
@@ -599,18 +803,103 @@ public:
 
 
 
-	PLF_CONSTFUNC bitsetb & operator <<= (std::size_t shift_amount) PLF_NOEXCEPT
+	// >>= but from a given index onwards only
+	PLF_CONSTFUNC void shift_left_range (size_type shift_amount, const size_type first) PLF_NOEXCEPT
+	{
+		assert(first < total_size);
+
+		size_type end = PLF_ARRAY_CAPACITY - 1;
+		const size_type first_word_index = first / PLF_TYPE_BITWIDTH;
+		const storage_type first_word = buffer[first_word_index];
+
+		if (shift_amount >= PLF_TYPE_BITWIDTH)
+		{
+			size_type current = first_word_index;
+
+			if (shift_amount < total_size - first)
+			#ifdef PLF_CPP20_SUPPORT
+				[[likely]]
+			#endif
+			{
+				size_type current_source = first_word_index + (shift_amount / PLF_TYPE_BITWIDTH);
+
+				if ((shift_amount %= PLF_TYPE_BITWIDTH) != 0)
+				{
+					const storage_type shifter = PLF_TYPE_BITWIDTH - shift_amount;
+
+					for (; current_source != end; ++current, ++current_source)
+					{
+						buffer[current] = (buffer[current_source] >> shift_amount) | (buffer[current_source + 1] << shifter);
+					}
+
+					buffer[current++] = buffer[end] >> shift_amount;
+				}
+				else
+				{
+					++end;
+
+					for (; current_source != end; ++current, ++current_source)
+					{
+						buffer[current] = buffer[current_source];
+					}
+				}
+			}
+
+			std::memset(static_cast<void *>(buffer + current), 0, (PLF_ARRAY_CAPACITY - current) * sizeof(storage_type));
+		}
+		else if (shift_amount != 0)
+		{
+			const storage_type shifter = PLF_TYPE_BITWIDTH - shift_amount;
+
+			for (size_type current = first_word_index; current != end; ++current)
+			{
+				buffer[current] = (buffer[current] >> shift_amount) | (buffer[current + 1] << shifter);
+			}
+
+			buffer[end] >>= shift_amount;
+		}
+
+		// Restore X bits to first word
+		const storage_type remainder = first - (first_word_index * PLF_TYPE_BITWIDTH);
+  		buffer[first_word_index] = (buffer[first_word_index] & (std::numeric_limits<storage_type>::max() << remainder)) | (first_word & (std::numeric_limits<storage_type>::max() >> (PLF_TYPE_BITWIDTH - remainder)));
+	}
+
+
+
+	// An optimization of the above for shifting by 1:
+	PLF_CONSTFUNC void shift_left_range_one (const size_type first) PLF_NOEXCEPT
+	{
+		assert(first < total_size);
+
+		const size_type end = PLF_ARRAY_CAPACITY - 1, first_word_index = first / PLF_TYPE_BITWIDTH;
+		const storage_type first_word = buffer[first_word_index], shifter = PLF_TYPE_BITWIDTH - 1;
+
+		for (size_type current = first_word_index; current != end; ++current)
+		{
+			buffer[current] = (buffer[current] >> 1) | (buffer[current + 1] << shifter);
+		}
+
+		buffer[end] >>= 1;
+
+		// Restore X bits to first word
+		const storage_type remainder = first - (first_word_index * PLF_TYPE_BITWIDTH);
+  		buffer[first_word_index] = (buffer[first_word_index] & (std::numeric_limits<storage_type>::max() << remainder)) | (first_word & (std::numeric_limits<storage_type>::max() >> (PLF_TYPE_BITWIDTH - remainder)));
+	}
+
+
+
+	PLF_CONSTFUNC bitsetb & operator <<= (size_type shift_amount) PLF_NOEXCEPT
 	{
 		if (shift_amount >= PLF_TYPE_BITWIDTH)
 		{
-			std::size_t current = PLF_ARRAY_CAPACITY;
+			size_type current = PLF_ARRAY_CAPACITY;
 
 			if (shift_amount < total_size)
 			#ifdef PLF_CPP20_SUPPORT
 				[[likely]]
 			#endif
 			{
-				std::size_t current_source = PLF_ARRAY_CAPACITY - (shift_amount / PLF_TYPE_BITWIDTH);
+				size_type current_source = PLF_ARRAY_CAPACITY - (shift_amount / PLF_TYPE_BITWIDTH);
 
 				if ((shift_amount %= PLF_TYPE_BITWIDTH) != 0)
 				{
@@ -639,7 +928,7 @@ public:
 			const storage_type shifter = PLF_TYPE_BITWIDTH - shift_amount;
 			storage_type shift_remainder = 0;
 
-			for (std::size_t current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current)
+			for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current)
 			{
 				const storage_type temp = buffer[current];
 				buffer[current] = (temp << shift_amount) | shift_remainder;
@@ -659,11 +948,11 @@ public:
 		one -= zero;
 		std::basic_string<char_type, traits, allocator_type> temp(total_size, zero);
 
-		for (std::size_t index = 0, end = PLF_ARRAY_CAPACITY; index != end; ++index)
+		for (size_type index = 0, end = PLF_ARRAY_CAPACITY; index != end; ++index)
 		{
  			if (buffer[index] != 0)
  			{
- 				const std::size_t string_index = index * PLF_TYPE_BITWIDTH;
+ 				const size_type string_index = index * PLF_TYPE_BITWIDTH;
  				const storage_type value = buffer[index];
 
 				for (storage_type subindex = 0, sub_end = PLF_TYPE_BITWIDTH; subindex != sub_end && (string_index + subindex) != total_size; ++subindex)
@@ -684,11 +973,11 @@ public:
 		one -= zero;
 		std::basic_string<char_type, traits, allocator_type> temp(total_size, zero);
 
-		for (std::size_t index = 0, end = PLF_ARRAY_CAPACITY; index != end; ++index)
+		for (size_type index = 0, end = PLF_ARRAY_CAPACITY; index != end; ++index)
 		{
  			if (buffer[index] != 0)
  			{
- 				const std::size_t string_index = index * PLF_TYPE_BITWIDTH;
+ 				const size_type string_index = index * PLF_TYPE_BITWIDTH;
  				const storage_type value = buffer[index];
 
 				for (storage_type subindex = 0, sub_end = PLF_TYPE_BITWIDTH; subindex != sub_end && (string_index + subindex) != total_size; ++subindex)
@@ -705,13 +994,13 @@ public:
 
 	PLF_CONSTFUNC std::basic_string<char> to_srstring() const
 	{
-		char temp[total_size]; // Hella faster in benchmarking to write to this array on the stack then construct the basic_string on return, than to write on the heap or directly to the basic_string
+		char temp = new char[total_size];
 
-		for (std::size_t index = 0, end = PLF_ARRAY_CAPACITY; index != end; ++index)
+		for (size_type index = 0, end = PLF_ARRAY_CAPACITY; index != end; ++index)
 		{
  			if (buffer[index] != 0)
  			{
- 				const std::size_t string_index = index * PLF_TYPE_BITWIDTH;
+ 				const size_type string_index = index * PLF_TYPE_BITWIDTH;
  				const storage_type value = buffer[index];
 
 				for (storage_type subindex = 0, sub_end = PLF_TYPE_BITWIDTH; subindex != sub_end && (string_index + subindex) != total_size; ++subindex)
@@ -721,7 +1010,9 @@ public:
 			}
 		}
 
-		return std::basic_string<char>(temp, total_size);
+		std::basic_string<char> returner(temp, total_size);
+		delete [] temp;
+		return returner;
 	}
 
 
@@ -731,14 +1022,14 @@ private:
 	template <typename number_type>
 	PLF_CONSTFUNC number_type to_type() const
 	{
-		if (total_size > static_cast<std::size_t>(std::log10(static_cast<double>(std::numeric_limits<number_type>::max()))) + 1)
+		if (total_size > static_cast<size_type>(std::log10(static_cast<double>(std::numeric_limits<number_type>::max()))) + 1)
 		{
 			throw std::overflow_error("Bitset cannot be represented by this type due to the size of the bitset");
 		}
 
 		number_type value = 0;
 
-		for (std::size_t index = 0, multiplier = 1; index != total_size; ++index, multiplier *= 10)
+		for (size_type index = 0, multiplier = 1; index != total_size; ++index, multiplier *= 10)
 		{
 			value += operator [](index) * multiplier;
 		}
@@ -751,14 +1042,14 @@ private:
 	template <typename number_type>
 	PLF_CONSTFUNC number_type to_reverse_type() const
 	{
-		if (total_size > static_cast<std::size_t>(std::log10(static_cast<double>(std::numeric_limits<number_type>::max()))) + 1)
+		if (total_size > static_cast<size_type>(std::log10(static_cast<double>(std::numeric_limits<number_type>::max()))) + 1)
 		{
 			throw std::overflow_error("Bitset cannot be represented by this type due to the size of the bitset");
 		}
 
 		number_type value = 0;
 
-		for (std::size_t reverse_index = total_size, multiplier = 1; reverse_index != 0; multiplier *= 10)
+		for (size_type reverse_index = total_size, multiplier = 1; reverse_index != 0; multiplier *= 10)
 		{
 			value += operator [](--reverse_index) * multiplier;
 		}
@@ -807,7 +1098,7 @@ public:
 		#ifdef PLF_EXCEPTIONS_SUPPORT
 			if (source.total_size != total_size) throw std::length_error("Bitsetb's do not have the same size, cannot swap.");
 		#endif
-		for (std::size_t current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) std::swap(buffer[current], source.buffer[current]);
+		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) std::swap(buffer[current], source.buffer[current]);
 	}
 };
 

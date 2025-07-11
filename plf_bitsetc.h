@@ -59,9 +59,10 @@ private:
 
 
 public:
+	typedef std::size_t size_type;
 
 	// Note: bitsetc is C++20-Only
-	constexpr bitsetc(const std::size_t set_size):
+	constexpr bitsetc(const size_type set_size):
 		base(std::allocator_traits<allocator_type>::allocate(*this, PLF_ARRAY_CAPACITY_CALC(set_size), 0), set_size)
 	{
 		reset();
@@ -98,7 +99,7 @@ public:
 
 
 
-	constexpr void change_size(const std::size_t new_size)
+	constexpr void change_size(const size_type new_size)
  	{
 		storage_type *new_buffer = std::allocator_traits<allocator_type>::allocate(*this, PLF_ARRAY_CAPACITY_CALC(new_size), buffer);
 		std::memcpy(static_cast<void *>(buffer), static_cast<const void *>(new_buffer), PLF_BITSET_SIZE_BYTES_CALC((new_size > total_size) ? total_size : new_size));
@@ -116,7 +117,7 @@ public:
 	constexpr void swap (bitsetc &source) noexcept
 	{
 		storage_type *swap_buffer = buffer;
-		const std::size_t swap_size = total_size;
+		const size_type swap_size = total_size;
 		buffer = source.buffer;
 		total_size = source.total_size;
 		source.buffer = swap_buffer;
@@ -137,11 +138,17 @@ public:
 	using base::any;
 	using base::count;
 	using base::first_one;
+	using base::next_one;
 	using base::first_zero;
+	using base::next_zero;
 	using base::last_one;
+	using base::prev_one;
 	using base::last_zero;
+	using base::prev_zero;
 	using base::size;
 	using base::operator >>=;
+	using base::shift_left_range;
+	using base::shift_left_range_one;
 	using base::operator <<=;
 	using base::to_string;
 	using base::to_rstring;

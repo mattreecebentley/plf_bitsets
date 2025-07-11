@@ -205,8 +205,18 @@ int main()
 		or_values.reset(132);
 
 		failpass("first_one test", and_values.first_one() == 100);
+		failpass("next_one test", and_values.next_one(64) == 100);
+		failpass("next_one test", and_values.next_one(54) == 100);
+		failpass("next_one test 2", and_values.next_one(120) == 131);
 		failpass("last_one test", and_values.last_one() == 131);
+		failpass("prev_one test", and_values.prev_one(132) == 131);
+		failpass("prev_one test 2", and_values.prev_one(128) == 100);
 		failpass("first_zero test", or_values.first_zero() == 110);
+		failpass("next_zero test", or_values.next_zero(64) == 110);
+		failpass("next_zero test 2", or_values.next_zero(54) == 110);
+		failpass("next_zero test 3", or_values.next_zero(128) == 132);
+		failpass("prev_zero test", or_values.prev_zero(133) == 132);
+		failpass("prev_zero test 2", or_values.prev_zero(129) == 110);
 		failpass("last_zero test", or_values.last_zero() == 132);
 
 		and_values.swap(or_values);
@@ -303,6 +313,31 @@ int main()
 
 		message(">>= multipass test success");
 	}
+
+	{
+		const unsigned int bitset_size = 28;
+		plf::bitset<bitset_size, unsigned char> shift_values;
+
+		for (unsigned int index = 0; index != bitset_size; index += 2)
+		{
+			shift_values.set(index + 1);
+		}
+
+		printf("Before shift: %s\n", shift_values.to_rstring().c_str());
+
+		shift_values.shift_left_range_one(5);
+
+		printf("After shift: %s\n", shift_values.to_rstring().c_str());
+
+		shift_values.shift_left_range(4, 4);
+
+		printf("After shift: %s\n", shift_values.to_rstring().c_str());
+
+		shift_values.shift_left_range(9, 7);
+
+		printf("After shift: %s\n", shift_values.to_rstring().c_str());
+	}
+
 
 	printf("Press ENTER to quit");
 	getchar();
