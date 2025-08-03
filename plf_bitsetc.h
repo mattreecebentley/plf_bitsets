@@ -46,8 +46,8 @@ namespace plf
 {
 
 
-template<typename storage_type = std::size_t, class allocator_type = std::allocator<storage_type>>
-class bitsetc : public bitsetb<storage_type>, private allocator_type
+template<typename storage_type = std::size_t, class allocator_type = std::allocator<storage_type>, bool hardened = false>
+class bitsetc : public bitsetb<storage_type, hardened>, private allocator_type
 {
 private:
 	typedef bitsetb<storage_type> base;
@@ -172,16 +172,16 @@ public:
 namespace std
 {
 
-	template <typename storage_type>
-	void swap (plf::bitsetc<storage_type> &a, plf::bitsetc<storage_type> &b)
+	template <typename storage_type, class allocator_type, bool hardened>
+	void swap (plf::bitsetc<storage_type, allocator_type, hardened> &a, plf::bitsetc<storage_type, allocator_type, hardened> &b)
 	{
 		a.swap(b);
 	}
 
 
 
-	template <typename storage_type>
-	ostream& operator << (ostream &os, const plf::bitsetc<storage_type> &bs)
+	template <typename storage_type, class allocator_type, bool hardened>
+	ostream& operator << (ostream &os, const plf::bitsetc<storage_type, allocator_type, hardened> &bs)
 	{
 		return os << bs.to_string();
 	}

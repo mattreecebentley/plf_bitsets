@@ -109,6 +109,7 @@ template<std::size_t total_size, typename storage_type = std::size_t, bool harde
 class bitset
 {
 private:
+	typedef std::size_t size_type;
 	storage_type buffer[PLF_ARRAY_CAPACITY];
 
 
@@ -138,8 +139,23 @@ private:
 
 
 
+	PLF_CONSTFUNC void check_index_is_within_size(const size_type index) const
+	{
+		if PLF_CONSTEXPR (hardened)
+		{
+			if (index >= total_size)
+			{
+				#ifdef PLF_EXCEPTIONS_SUPPORT
+					throw std::out_of_range("Index larger than size of bitset");
+				#else
+					std::terminate();
+				#endif
+			}
+		}
+	}
+
+
 public:
-	typedef std::size_t size_type;
 
 	PLF_CONSTFUNC bitset() PLF_NOEXCEPT
 	{
@@ -157,13 +173,7 @@ public:
 
 	PLF_CONSTFUNC bool operator [] (const size_type index) const
 	{
-		#ifdef PLF_EXCEPTIONS_SUPPORT
-			if PLF_CONSTEXPR (hardened)
-			{
-				if (index >= total_size) throw std::out_of_range("Index larger than size of bitset");
-			}
-		#endif
-
+		if PLF_CONSTEXPR (hardened) check_index_is_within_size(index);
 		return static_cast<bool>((buffer[index / PLF_TYPE_BITWIDTH] >> (index % PLF_TYPE_BITWIDTH)) & storage_type(1));
 	}
 
@@ -171,13 +181,7 @@ public:
 
 	PLF_CONSTFUNC bool test(const size_type index) const
 	{
-		#ifdef PLF_EXCEPTIONS_SUPPORT
-			if PLF_CONSTEXPR (!hardened) // If hardened, will be checked in []
-			{
-				if (index >= total_size) throw std::out_of_range("Index larger than size of bitset");
-			}
-		#endif
-
+		if PLF_CONSTEXPR (!hardened) check_index_is_within_size(index); // If hardened, will be checked in [] below
 		return operator [](index);
 	}
 
@@ -193,13 +197,7 @@ public:
 
 	PLF_CONSTFUNC void set(const size_type index)
 	{
-		#ifdef PLF_EXCEPTIONS_SUPPORT
-			if PLF_CONSTEXPR (hardened)
-			{
-				if (index >= total_size) throw std::out_of_range("Index larger than size of bitset");
-			}
-		#endif
-
+		if PLF_CONSTEXPR (hardened) check_index_is_within_size(index);
 		buffer[index / PLF_TYPE_BITWIDTH] |= storage_type(1) << (index % PLF_TYPE_BITWIDTH);
 	}
 
@@ -207,12 +205,7 @@ public:
 
 	PLF_CONSTFUNC void set(const size_type index, const bool value)
 	{
-		#ifdef PLF_EXCEPTIONS_SUPPORT
-			if PLF_CONSTEXPR (hardened)
-			{
-				if (index >= total_size) throw std::out_of_range("Index larger than size of bitset");
-			}
-		#endif
+		if PLF_CONSTEXPR (hardened) check_index_is_within_size(index);
 
  		const size_type blockindex = index / PLF_TYPE_BITWIDTH, shift = index % PLF_TYPE_BITWIDTH;
 		buffer[blockindex] = (buffer[blockindex] & ~(storage_type(1) << shift)) | (static_cast<storage_type>(value) << shift);
@@ -222,12 +215,11 @@ public:
 
 	PLF_CONSTFUNC void set_range(const size_type begin, const size_type end)
 	{
-		#ifdef PLF_EXCEPTIONS_SUPPORT
-			if PLF_CONSTEXPR (hardened)
-			{
-				if (begin >= total_size || end >= total_size) throw std::out_of_range("Index larger than size of bitset");
-			}
-		#endif
+		if PLF_CONSTEXPR (hardened)
+		{
+			check_index_is_within_size(begin);
+			check_index_is_within_size(end);
+		}
 
 		if (begin == end)
 		#ifdef PLF_CPP20_SUPPORT
@@ -237,12 +229,12 @@ public:
 			return;
 		}
 
-		const size_type begin_type_index = begin / PLF_TYPE_BITWIDTH, end_type_index = (end - 1) / PLF_TYPE_BITWIDTH, distance_to_end_storage = PLF_TYPE_BITWIDTH - (end % PLF_TYPE_BITWIDTH);
+		const size_type begin_type_index = begin / PLF_TYPE_BITWIDTH, end_type_index = (end - 1) / PLF_TYPE_BITWIDTH, begin_subindex = begin % PLF_TYPE_BITWIDTH, distance_to_end_storage = PLF_TYPE_BITWIDTH - (end % PLF_TYPE_BITWIDTH);
 
 		if (begin_type_index != end_type_index) // ie. if first and last bit to be set are not in the same storage_type unit
 		{
 			// Write first storage_type:
-			buffer[begin_type_index] |= std::numeric_limits<storage_type>::max() << (begin % PLF_TYPE_BITWIDTH);
+			buffer[begin_type_index] |= std::numeric_limits<storage_type>::max() << begin_subindex;
 
 			// Fill all intermediate storage_type's (if any):
 			std::memset(static_cast<void *>(buffer + begin_type_index + 1), std::numeric_limits<unsigned char>::max(), ((end_type_index - 1) - begin_type_index) * sizeof(storage_type));
@@ -252,7 +244,7 @@ public:
 		}
 		else
 		{
-			buffer[begin_type_index] |= (std::numeric_limits<storage_type>::max() << (begin % PLF_TYPE_BITWIDTH)) & (std::numeric_limits<storage_type>::max() >> distance_to_end_storage);
+			buffer[begin_type_index] |= (std::numeric_limits<storage_type>::max() << begin_subindex) & (std::numeric_limits<storage_type>::max() >> distance_to_end_storage);
 		}
 	}
 
@@ -281,12 +273,7 @@ public:
 
 	PLF_CONSTFUNC void reset(const size_type index)
 	{
-		#ifdef PLF_EXCEPTIONS_SUPPORT
-			if PLF_CONSTEXPR (hardened)
-			{
-				if (index >= total_size) throw std::out_of_range("Index larger than size of bitset");
-			}
-		#endif
+		if PLF_CONSTEXPR (hardened) check_index_is_within_size(index);
 
 		buffer[index / PLF_TYPE_BITWIDTH] &= ~(storage_type(1) << (index % PLF_TYPE_BITWIDTH));
 	}
@@ -295,12 +282,11 @@ public:
 
 	PLF_CONSTFUNC void reset_range(const size_type begin, const size_type end)
 	{
-		#ifdef PLF_EXCEPTIONS_SUPPORT
-			if PLF_CONSTEXPR (hardened)
-			{
-				if (begin >= total_size || end >= total_size) throw std::out_of_range("Index larger than size of bitset");
-			}
-		#endif
+		if PLF_CONSTEXPR (hardened)
+		{
+			check_index_is_within_size(begin);
+			check_index_is_within_size(end);
+		}
 
 		if (begin == end)
 		#ifdef PLF_CPP20_SUPPORT
@@ -310,17 +296,17 @@ public:
 			return;
 		}
 
-		const size_type begin_type_index = begin / PLF_TYPE_BITWIDTH, end_type_index = (end - 1) / PLF_TYPE_BITWIDTH, distance_to_end_storage = PLF_TYPE_BITWIDTH - (end % PLF_TYPE_BITWIDTH);
+		const size_type begin_type_index = begin / PLF_TYPE_BITWIDTH, end_type_index = (end - 1) / PLF_TYPE_BITWIDTH, begin_subindex = begin % PLF_TYPE_BITWIDTH, distance_to_end_storage = PLF_TYPE_BITWIDTH - (end % PLF_TYPE_BITWIDTH);
 
 		if (begin_type_index != end_type_index)
 		{
-			buffer[begin_type_index] &= ~(std::numeric_limits<storage_type>::max() << (begin % PLF_TYPE_BITWIDTH));
+			buffer[begin_type_index] &= ~(std::numeric_limits<storage_type>::max() << begin_subindex);
 			std::memset(static_cast<void *>(buffer + begin_type_index + 1), 0, ((end_type_index - 1) - begin_type_index) * sizeof(storage_type));
 			buffer[end_type_index] &= ~(std::numeric_limits<storage_type>::max() >> distance_to_end_storage);
 		}
 		else
 		{
-			buffer[begin_type_index] &= ~((std::numeric_limits<storage_type>::max() << (begin % PLF_TYPE_BITWIDTH)) & (std::numeric_limits<storage_type>::max() >> distance_to_end_storage));
+			buffer[begin_type_index] &= ~((std::numeric_limits<storage_type>::max() << begin_subindex) & (std::numeric_limits<storage_type>::max() >> distance_to_end_storage));
 		}
 	}
 
@@ -1073,13 +1059,23 @@ public:
 private:
 
 	template <typename number_type>
-	PLF_CONSTFUNC number_type to_type() const
+	PLF_CONSTFUNC void check_bitset_representable() const
 	{
 		if (total_size > static_cast<size_type>(std::log10(static_cast<double>(std::numeric_limits<number_type>::max()))) + 1)
 		{
-			throw std::overflow_error("Bitset cannot be represented by this type due to the size of the bitset");
+			#ifdef PLF_EXCEPTIONS_SUPPORT
+				throw std::overflow_error("Bitset cannot be represented by this type due to the size of the bitset");
+			#else
+				std::terminate();
+			#endif
 		}
+	}
 
+
+	template <typename number_type>
+	PLF_CONSTFUNC number_type to_type() const
+	{
+      check_bitset_representable<number_type>();
 		number_type value = 0;
 
 		for (size_type index = 0, multiplier = 1; index != total_size; ++index, multiplier *= 10)
@@ -1095,11 +1091,7 @@ private:
 	template <typename number_type>
 	PLF_CONSTFUNC number_type to_reverse_type() const
 	{
-		if (total_size > static_cast<size_type>(std::log10(static_cast<double>(std::numeric_limits<number_type>::max()))) + 1)
-		{
-			throw std::overflow_error("Bitset cannot be represented by this type due to the size of the bitset");
-		}
-
+      check_bitset_representable<number_type>();
 		number_type value = 0;
 
 		for (size_type reverse_index = total_size, multiplier = 1; reverse_index != 0; multiplier *= 10)
