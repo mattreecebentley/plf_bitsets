@@ -26,6 +26,7 @@
 // defaults before potential redefinitions:
 #define PLF_NOEXCEPT throw()
 #define PLF_EXCEPTIONS_SUPPORT
+#define PLF_CONSTEXPR
 #define PLF_CONSTFUNC
 
 
@@ -36,13 +37,16 @@
 
 
 #if defined(_MSC_VER) && !defined(__clang__) && !defined(__GNUC__)
-	#if _MSC_VER >= 1600
-		#define PLF_MOVE_SEMANTICS_SUPPORT
-	#endif
 	#if _MSC_VER >= 1900
 		#undef PLF_NOEXCEPT
 		#define PLF_NOEXCEPT noexcept
 	#endif
+
+	#if defined(_MSVC_LANG) && (_MSVC_LANG >= 201703L)
+		#undef PLF_CONSTEXPR
+		#define PLF_CONSTEXPR constexpr
+	#endif
+
 	#if defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L) && _MSC_VER >= 1929
 		#undef PLF_CONSTFUNC
 		#define PLF_CONSTFUNC constexpr
@@ -50,9 +54,6 @@
 	#endif
 #elif defined(__cplusplus) && __cplusplus >= 201103L // C++11 support, at least
 	#if defined(__GNUC__) && defined(__GNUC_MINOR__) && !defined(__clang__) // If compiler is GCC/G++
-		#if (__GNUC__ == 4 && __GNUC_MINOR__ >= 3) || __GNUC__ > 4
-			#define PLF_MOVE_SEMANTICS_SUPPORT
-		#endif
 		#if (__GNUC__ == 4 && __GNUC_MINOR__ >= 6) || __GNUC__ > 4
 			#undef PLF_NOEXCEPT
 			#define PLF_NOEXCEPT noexcept
@@ -62,13 +63,16 @@
 			#undef PLF_NOEXCEPT
 			#define PLF_NOEXCEPT noexcept
 		#endif
-		#if __has_feature(cxx_rvalue_references) && !defined(_LIBCPP_HAS_NO_RVALUE_REFERENCES)
-			#define PLF_MOVE_SEMANTICS_SUPPORT
-		#endif
 	#else // Assume noexcept support for other compilers
 		#undef PLF_NOEXCEPT
 		#define PLF_NOEXCEPT noexcept
 	#endif
+
+	#if __cplusplus >= 201703L && ((defined(__clang__) && ((__clang_major__ == 3 && __clang_minor__ == 9) || __clang_major__ > 3)) || (defined(__GNUC__) && __GNUC__ >= 7) || (!defined(__clang__) && !defined(__GNUC__))) // assume correct C++17 implementation for non-gcc/clang compilers
+		#undef PLF_CONSTEXPR
+		#define PLF_CONSTEXPR constexpr
+	#endif
+
 	// The following line is a little different from other plf:: containers because we need constexpr basic_string in order to make the to_string function constexpr:
 	#if __cplusplus > 201704L && ((((defined(__clang__) && __clang_major__ >= 15) || (defined(__GNUC__) && (__GNUC__ >= 12))) && ((defined(_LIBCPP_VERSION) && _LIBCPP_VERSION >= 15) || (defined(__GLIBCXX__) &&	_GLIBCXX_RELEASE >= 12))) || (!defined(__clang__) && !defined(__GNUC__)))
 		#undef PLF_CONSTFUNC
