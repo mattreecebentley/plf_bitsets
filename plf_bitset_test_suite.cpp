@@ -148,20 +148,23 @@ int main()
 
 		plf::bitset<134> and_values = values;
 		and_values &= flip_values;
-
-		failpass("And test", and_values.count() == 0);
+		plf::bitset<134> and_values2 = values & flip_values;
+		
+		failpass("And test", and_values.count() == 0 && and_values == and_values2);
 
 
 		plf::bitset<134> or_values = values;
 		or_values |= flip_values;
+		plf::bitset<134> or_values2 = values | flip_values;
 
-		failpass("Or test", or_values.count() == 134);
+		failpass("Or test", or_values.count() == 134 && or_values == or_values2);
 
 
  		plf::bitset<134> xor_values = and_values;
  		xor_values ^= or_values;
+		plf::bitset<134> xor_values2 = values ^ flip_values;
 
- 		failpass("Xor test", xor_values.count() == 134);
+ 		failpass("Xor test", xor_values.count() == 134 && xor_values == xor_values2);
 
 		std::basic_string<char> values_output = values.to_string();
 		std::basic_string<char> flip_output = flip_values.to_string();

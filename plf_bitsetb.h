@@ -1,6 +1,6 @@
 // Copyright (c) 2025, Matthew Bentley (mattreecebentley@gmail.com) www.plflib.org
 
-// Computing For Good License v1.0 (https://plflib.org/computing_for_good_license.htm):
+// Computing For Good License v1.01 (https://plflib.org/computing_for_good_license.htm):
 // This code is provided 'as-is', without any express or implied warranty. In no event will the authors be held liable for any damages arising from the use of this code.
 //
 // Permission is granted to use this code by anyone and for any purpose, including commercial applications, and to alter it and redistribute it freely, subject to the following restrictions:
@@ -9,7 +9,7 @@
 // 2. 	Altered code versions must be plainly marked as such, and must not be misrepresented as being the original code.
 // 3. 	This notice may not be removed or altered from any code distribution, including altered code versions.
 // 4. 	This code and altered code versions may not be used by groups, companies, individuals or in software whose primary or partial purpose is to:
-// 	 a.	 Promote addiction or intoxication.
+// 	 a.	 Promote addiction or substance-based intoxication.
 // 	 b.	 Cause harm to, or violate the rights of, other sentient beings.
 // 	 c.	 Distribute, obtain or utilize software, media or other materials without the consent of the owners.
 // 	 d.	 Deliberately spread misinformation or encourage dishonesty.

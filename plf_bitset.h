@@ -1,6 +1,6 @@
 // Copyright (c) 2025, Matthew Bentley (mattreecebentley@gmail.com) www.plflib.org
 
-// Computing For Good License v1.0 (https://plflib.org/computing_for_good_license.htm):
+// Computing For Good License v1.01 (https://plflib.org/computing_for_good_license.htm):
 // This code is provided 'as-is', without any express or implied warranty. In no event will the authors be held liable for any damages arising from the use of this code.
 //
 // Permission is granted to use this code by anyone and for any purpose, including commercial applications, and to alter it and redistribute it freely, subject to the following restrictions:
@@ -9,7 +9,7 @@
 // 2. 	Altered code versions must be plainly marked as such, and must not be misrepresented as being the original code.
 // 3. 	This notice may not be removed or altered from any code distribution, including altered code versions.
 // 4. 	This code and altered code versions may not be used by groups, companies, individuals or in software whose primary or partial purpose is to:
-// 	 a.	 Promote addiction or intoxication.
+// 	 a.	 Promote addiction or substance-based intoxication.
 // 	 b.	 Cause harm to, or violate the rights of, other sentient beings.
 // 	 c.	 Distribute, obtain or utilize software, media or other materials without the consent of the owners.
 // 	 d.	 Deliberately spread misinformation or encourage dishonesty.
@@ -92,7 +92,7 @@
 
 
 #include <cmath> // log10
-#include <cassert> // log10
+#include <cassert>
 #include <cstring>	// memset, memcmp, size_t
 #include <string>	// std::basic_string
 #include <stdexcept> // std::out_of_range
@@ -670,6 +670,15 @@ public:
 
 
 
+	PLF_CONSTFUNC bitset operator & (const bitset& source) PLF_NOEXCEPT
+	{
+		bitset result;
+		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) result.buffer[current] = buffer[current] & source.buffer[current];
+		return result;
+	}
+	
+
+
 	PLF_CONSTFUNC bitset & operator |= (const bitset& source) PLF_NOEXCEPT
 	{
 		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) buffer[current] |= source.buffer[current];
@@ -678,12 +687,30 @@ public:
 
 
 
+	PLF_CONSTFUNC bitset operator | (const bitset& source) PLF_NOEXCEPT
+	{
+		bitset result;
+		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) result.buffer[current] = buffer[current] | source.buffer[current];
+		return result;
+	}
+	
+
+
 	PLF_CONSTFUNC bitset & operator ^= (const bitset& source) PLF_NOEXCEPT
 	{
 		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) buffer[current] ^= source.buffer[current];
 		return *this;
 	}
 
+
+
+	PLF_CONSTFUNC bitset operator ^ (const bitset& source) PLF_NOEXCEPT
+	{
+		bitset result;
+		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) result.buffer[current] = buffer[current] ^ source.buffer[current];
+		return result;
+	}
+	
 
 
 	PLF_CONSTFUNC bitset operator ~ () const
@@ -1093,20 +1120,19 @@ public:
 namespace std
 {
 
-	template <std::size_t total_size, typename storage_type>
-	void swap (plf::bitset<total_size, storage_type> &a, plf::bitset<total_size, storage_type> &b) PLF_NOEXCEPT
+	template<std::size_t total_size, typename storage_type, bool hardened>
+	PLF_CONSTFUNC void swap (plf::bitset<total_size, storage_type, hardened> &a, plf::bitset<total_size, storage_type, hardened> &b) PLF_NOEXCEPT
 	{
 		a.swap(b);
 	}
 
 
 
-	template <std::size_t total_size, typename storage_type>
-	ostream& operator << (ostream &os, const plf::bitset<total_size, storage_type> &bs)
+	template<std::size_t total_size, typename storage_type, bool hardened>
+	PLF_CONSTFUNC ostream& operator << (ostream &os, const plf::bitset<total_size, storage_type, hardened> &bs)
 	{
 		return os << bs.to_string();
 	}
-
 }
 
 

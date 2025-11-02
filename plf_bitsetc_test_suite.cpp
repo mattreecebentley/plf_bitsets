@@ -131,27 +131,34 @@ int main()
 
 	plf::bitsetc flip_values(values);
 	flip_values.flip();
-		
+
 	failpass("Flip test", flip_values.count() == 134 - total2);
-		
+
 		
 	plf::bitsetc and_values(values);
 	and_values &= flip_values;
+	plf::bitsetc and_values2(134);
+	and_values2 = values & flip_values;
 
-	failpass("And test", and_values.count() == 0);
+	failpass("And test", and_values.count() == 0 && and_values == and_values2);
 		
 		
 	plf::bitsetc or_values(values);
 	or_values |= flip_values;
+	plf::bitsetc or_values2(134);
+	or_values2 = values | flip_values;
 		
-	failpass("Or test", or_values.count() == 134);
+	failpass("Or test", or_values.count() == 134 && or_values == or_values2);
 		
 
  	plf::bitsetc xor_values(and_values);
  	xor_values ^= or_values;
+	plf::bitsetc xor_values2(134);
+	xor_values2 = values ^ flip_values;
 
- 	failpass("Xor test", xor_values.count() == 134);
-		
+ 	failpass("Xor test", xor_values.count() == 134 && xor_values == xor_values2);
+
+
 	std::basic_string<char> values_output = values.to_string();
 	std::basic_string<char> flip_output = flip_values.to_string();
 
@@ -172,7 +179,7 @@ int main()
 	failpass("Any test", or_values.any() && values.any() && flip_values.any() && !and_values.any());
 
 	failpass("None test", !or_values.none() && !values.none() && !flip_values.none() && and_values.none());
-		
+
 	and_values.set(100);
 	and_values.set(131);
 	or_values.reset(110);
