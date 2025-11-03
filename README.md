@@ -26,6 +26,7 @@ The benchmarks on the project page (https://plflib.org/bitsets.htm) give more de
 All the bitsets have additional functionality:
 * Copy constructor/assignment
 * The set_range/reset_range functions
+* Range-based equivalents of the any/all/none/count functions
 * Optimized functions for finding the first/last zero/one of the bitset
 * An allocation-free noexcept swap() using the XOR method.
 * Functions for index-congruent to_string and to_ulong/ullong functions.
