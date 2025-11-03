@@ -185,6 +185,16 @@ int main()
 	or_values.reset(110);
 	or_values.reset(132);
 
+	failpass("count_range test", and_values.count_range(0, 99) == 0 && and_values.count_range(120, 134) == 1);
+	failpass("any_range test", !and_values.any_range(0, 99) && and_values.any_range(120, 134));
+	failpass("all_range test", !or_values.all_range(100, 134) && or_values.all_range(0, 99));
+	failpass("none_range test", and_values.none_range(0, 99) && !and_values.none_range(120, 134));
+
+	failpass("count_range test 2", and_values.count_range(34, 45) == 0 && and_values.count_range(130, 134) == 1);
+	failpass("any_range test 2", !and_values.any_range(34, 45) && and_values.any_range(130, 134));
+	failpass("all_range test 2", !or_values.all_range(90, 112) && or_values.all_range(34, 45));
+	failpass("none_range test 2", and_values.none_range(90, 99) && !and_values.none_range(129, 134));
+
 	failpass("first_one test", and_values.first_one() == 100);
 	failpass("next_one test", and_values.next_one(64) == 100);
 	failpass("next_one test", and_values.next_one(54) == 100);

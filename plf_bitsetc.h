@@ -56,6 +56,7 @@ private:
 	using base::total_size;
 	using base::set_overflow_to_one;
 	using base::set_overflow_to_zero;
+	using base::check_source_size;
 
 
 public:
@@ -96,6 +97,27 @@ public:
 	{
 		std::allocator_traits<allocator_type>::deallocate(*this, buffer, PLF_ARRAY_CAPACITY_CALC(total_size));
 	}
+
+
+
+	constexpr void operator = (const bitsetc &source)
+	{
+		check_source_size(source.total_size);
+		std::memcpy(static_cast<void *>(buffer), static_cast<const void *>(source.buffer), PLF_BITSET_SIZE_BYTES_CALC((source.total_size < total_size) ? source.total_size : total_size));
+	}
+
+
+
+	#ifdef PLF_MOVE_SEMANTICS_SUPPORT
+		constexpr void operator = (bitsetc &&source) noexcept
+		{
+			std::allocator_traits<allocator_type>::deallocate(*this, buffer, PLF_ARRAY_CAPACITY_CALC(total_size));
+			buffer = source.buffer;
+			total_size = source.total_size;
+			source.buffer = NULL;
+			source.total_size = 0;
+		}
+	#endif
 
 
 
@@ -164,31 +186,31 @@ public:
 	using base::operator ^=;
 
 
-	PLF_CONSTFUNC bitsetc operator & (const bitsetc& source)
+	constexpr bitsetc operator & (const bitsetc& source) const noexcept
 	{
 		check_source_size(source.total_size);
 		bitsetc result(total_size);
-		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) result.buffer[current] = buffer[current] & source.buffer[current];
+		for (size_type current = 0, end = PLF_ARRAY_CAPACITY_CALC(total_size); current != end; ++current) result.buffer[current] = buffer[current] & source.buffer[current];
 		return result;
 	}
 
 
 
-	PLF_CONSTFUNC bitsetb operator | (const bitsetb& source)
+	constexpr bitsetc operator | (const bitsetc& source) const noexcept
 	{
 		check_source_size(source.total_size);
 		bitsetc result(total_size);
-		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) result.buffer[current] = buffer[current] | source.buffer[current];
+		for (size_type current = 0, end = PLF_ARRAY_CAPACITY_CALC(total_size); current != end; ++current) result.buffer[current] = buffer[current] | source.buffer[current];
 		return result;
 	}
 
 
 
-	PLF_CONSTFUNC bitsetb operator ^ (const bitsetb& source)
+	constexpr bitsetc operator ^ (const bitsetc& source) const noexcept
 	{
 		check_source_size(source.total_size);
 		bitsetc result(total_size);
-		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) result.buffer[current] = buffer[current] ^ source.buffer[current];
+		for (size_type current = 0, end = PLF_ARRAY_CAPACITY_CALC(total_size); current != end; ++current) result.buffer[current] = buffer[current] ^ source.buffer[current];
 		return result;
 	}
 
