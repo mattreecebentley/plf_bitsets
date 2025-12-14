@@ -26,18 +26,10 @@
 #include <memory> // std::allocator
 
 
-// Compiler-specific defines:
-
-#define PLF_EXCEPTIONS_SUPPORT
-
-#if ((defined(__clang__) || defined(__GNUC__)) && !defined(__EXCEPTIONS)) || (defined(_MSC_VER) && !defined(_CPPUNWIND))
-	#undef PLF_EXCEPTIONS_SUPPORT
-#endif
-
 
 #define PLF_TYPE_BITWIDTH (sizeof(storage_type) * 8)
-#define PLF_BITSET_SIZE_BYTES_CALC(bitset_size) ((bitset_size + 7) / (sizeof(unsigned char) * 8)) // ie. round up to nearest byte
-#define PLF_ARRAY_CAPACITY_CALC(array_size) ((array_size + PLF_TYPE_BITWIDTH - 1) / PLF_TYPE_BITWIDTH) // ie. round up to nearest unit of storage
+#define PLF_ARRAY_CAPACITY ((total_size + PLF_TYPE_BITWIDTH - 1) / PLF_TYPE_BITWIDTH) // ie. round up to nearest unit of storage
+#define PLF_ARRAY_CAPACITY_CALC(bitset_size) ((bitset_size + PLF_TYPE_BITWIDTH - 1) / PLF_TYPE_BITWIDTH)
 
 
 
@@ -79,7 +71,7 @@ public:
 			allocator_type(source)
 		#endif
 	{
-		std::memcpy(static_cast<void *>(buffer), static_cast<const void *>(source.buffer), PLF_BITSET_SIZE_BYTES_CALC(source.total_size));
+		std::copy(source.buffer, source.buffer + PLF_ARRAY_CAPACITY_CALC((source.total_size < total_size) ? source.total_size : total_size), buffer);
 		set_overflow_to_zero(); // In case source.total_size != total_size
 	}
 
@@ -103,7 +95,7 @@ public:
 	constexpr void operator = (const bitsetc &source)
 	{
 		check_source_size(source.total_size);
-		std::memcpy(static_cast<void *>(buffer), static_cast<const void *>(source.buffer), PLF_BITSET_SIZE_BYTES_CALC((source.total_size < total_size) ? source.total_size : total_size));
+		std::copy(source.buffer, source.buffer + PLF_ARRAY_CAPACITY_CALC((source.total_size < total_size) ? source.total_size : total_size), buffer);
 	}
 
 
@@ -124,7 +116,7 @@ public:
 	constexpr void change_size(const size_type new_size)
  	{
 		storage_type *new_buffer = std::allocator_traits<allocator_type>::allocate(*this, PLF_ARRAY_CAPACITY_CALC(new_size), buffer);
-		std::memcpy(static_cast<void *>(buffer), static_cast<const void *>(new_buffer), PLF_BITSET_SIZE_BYTES_CALC((new_size > total_size) ? total_size : new_size));
+		std::copy(new_buffer, new_buffer + PLF_ARRAY_CAPACITY_CALC((new_size > total_size) ? total_size : new_size), buffer);
 
 		if (new_size > total_size) reset_range(total_size, new_size);
 
@@ -241,9 +233,7 @@ namespace std
 
 }
 
-#undef PLF_EXCEPTIONS_SUPPORT
 #undef PLF_TYPE_BITWIDTH
-#undef PLF_BITSET_SIZE_BYTES_CALC
 #undef PLF_ARRAY_CAPACITY_CALC
 
-#endif // PLF_bitsetc_H
+#endif // PLF_BITSETC_H

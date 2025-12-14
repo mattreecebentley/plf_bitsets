@@ -82,17 +82,16 @@
 #endif
 
 
-#define PLF_BITSET_SIZE_BYTES_CALC(bitset_size) ((bitset_size + 7) / (sizeof(unsigned char) * 8)) // ie. round up to nearest byte
 #define PLF_TYPE_BITWIDTH (sizeof(storage_type) * 8)
+#define PLF_ARRAY_CAPACITY_CALC(bitset_size) ((bitset_size + PLF_TYPE_BITWIDTH - 1) / PLF_TYPE_BITWIDTH) // ie. round up to nearest unit of storage
 #define PLF_ARRAY_CAPACITY ((total_size + PLF_TYPE_BITWIDTH - 1) / PLF_TYPE_BITWIDTH) // ie. round up to nearest unit of storage
-#define PLF_ARRAY_CAPACITY_BYTES (PLF_ARRAY_CAPACITY * sizeof(storage_type))
-#define PLF_ARRAY_CAPACITY_BITS (PLF_ARRAY_CAPACITY_BYTES * 8)
+#define PLF_ARRAY_CAPACITY_BITS (PLF_ARRAY_CAPACITY * PLF_TYPE_BITWIDTH)
 
 
 #include <cassert>
 #include <cmath> // log10
-#include <cstring> // memset, memcmp, size_t
 #include <string> // std::basic_string
+#include <algorithm> // fill_n, std::copy
 #include <stdexcept> // std::out_of_range
 #include <limits>  // std::numeric_limits
 #include <bit>  // std::pop_count, std::countr_one, std::countr_zero
@@ -163,7 +162,7 @@ public:
 		buffer(supplied_buffer),
 		total_size(size)
 	{
-		std::memcpy(static_cast<void *>(buffer), static_cast<const void *>(source.buffer), PLF_BITSET_SIZE_BYTES_CALC((source.total_size < total_size) ? source.total_size : total_size));
+		std::copy(source.buffer, source.buffer + PLF_ARRAY_CAPACITY_CALC((source.total_size < total_size) ? source.total_size : total_size), buffer);
 		set_overflow_to_zero(); // In case source.total_size != total_size
 	}
 
@@ -198,7 +197,7 @@ public:
 
 	PLF_CONSTFUNC void set()
 	{
-		std::memset(static_cast<void *>(buffer), std::numeric_limits<unsigned char>::max(), PLF_BITSET_SIZE_BYTES_CALC(total_size));
+		std::fill_n(buffer, PLF_ARRAY_CAPACITY, std::numeric_limits<storage_type>::max());
 		set_overflow_to_zero();
 	}
 
@@ -247,7 +246,7 @@ public:
 			buffer[begin_type_index] |= std::numeric_limits<storage_type>::max() << begin_subindex;
 
 			// Fill all intermediate storage_type's (if any):
-			std::memset(static_cast<void *>(buffer + begin_type_index + 1), std::numeric_limits<unsigned char>::max(), ((end_type_index - 1) - begin_type_index) * sizeof(storage_type));
+			std::fill_n(buffer + begin_type_index + 1, (end_type_index - 1) - begin_type_index, std::numeric_limits<storage_type>::max());
 
 			// Write last storage_type:
 			buffer[end_type_index] |= std::numeric_limits<storage_type>::max() >> distance_to_end_storage;
@@ -276,7 +275,7 @@ public:
 
 	PLF_CONSTFUNC void reset()
 	{
-		std::memset(static_cast<void *>(buffer), 0, PLF_ARRAY_CAPACITY_BYTES);
+		std::fill_n(buffer, PLF_ARRAY_CAPACITY, 0);
 	}
 
 
@@ -310,7 +309,7 @@ public:
 		if (begin_type_index != end_type_index)
 		{
 			buffer[begin_type_index] &= ~(std::numeric_limits<storage_type>::max() << begin_subindex);
-			std::memset(static_cast<void *>(buffer + begin_type_index + 1), 0, ((end_type_index - 1) - begin_type_index) * sizeof(storage_type));
+			std::fill_n(buffer + begin_type_index + 1, (end_type_index - 1) - begin_type_index, 0);
 			buffer[end_type_index] &= ~(std::numeric_limits<storage_type>::max() >> distance_to_end_storage);
 		}
 		else
@@ -479,7 +478,7 @@ public:
 
 private:
 
-	static PLF_CONSTFUNC size_type count_word(const storage_type value)
+	static PLF_CONSTFUNC size_type count_word(storage_type value)
 	{
 		#ifdef PLF_CPP20_SUPPORT
 			return std::popcount(value); // leverage CPU intrinsics for faster performance
@@ -807,7 +806,7 @@ public:
 	PLF_CONSTFUNC void operator = (const bitsetb &source)
 	{
 		check_source_size(source.total_size);
-		std::memcpy(static_cast<void *>(buffer), static_cast<const void *>(source.buffer), PLF_BITSET_SIZE_BYTES_CALC((source.total_size < total_size) ? source.total_size : total_size));
+		std::copy(source.buffer, source.buffer + PLF_ARRAY_CAPACITY_CALC((source.total_size < total_size) ? source.total_size : total_size), buffer);
 	}
 
 
@@ -827,8 +826,7 @@ public:
 
  	PLF_CONSTFUNC bool operator == (const bitsetb &source) const
 	{
-		if (source.total_size != total_size) return false;
-		return std::memcmp(static_cast<const void *>(buffer), static_cast<const void *>(source.buffer), PLF_BITSET_SIZE_BYTES_CALC(total_size)) == 0;
+ 		return (source.total_size == total_size) && std::equal(source.buffer, source.buffer + PLF_ARRAY_CAPACITY, buffer);
 	}
 
 
@@ -936,7 +934,7 @@ public:
 				}
 			}
 
-			std::memset(static_cast<void *>(buffer + current), 0, (PLF_ARRAY_CAPACITY - current) * sizeof(storage_type));
+			std::fill_n(buffer + current, PLF_ARRAY_CAPACITY - current, 0);
 		}
 		else if (shift_amount != 0)
 		{
@@ -997,7 +995,7 @@ public:
 				}
 			}
 
-			std::memset(static_cast<void *>(buffer + current), 0, (PLF_ARRAY_CAPACITY - current) * sizeof(storage_type));
+			std::fill_n(buffer + current, PLF_ARRAY_CAPACITY - current, 0);
 		}
 		else if (shift_amount != 0)
 		{
@@ -1042,51 +1040,36 @@ public:
 
 	PLF_CONSTFUNC bitsetb & operator <<= (size_type shift_amount) PLF_NOEXCEPT
 	{
-		if (shift_amount >= PLF_TYPE_BITWIDTH)
+		size_type current = PLF_ARRAY_CAPACITY;
+
+		if (shift_amount < total_size)
+		#ifdef PLF_CPP20_SUPPORT
+			[[likely]]
+		#endif
 		{
-			size_type current = PLF_ARRAY_CAPACITY;
+			size_type current_source = PLF_ARRAY_CAPACITY - (shift_amount / PLF_TYPE_BITWIDTH);
 
-			if (shift_amount < total_size)
-			#ifdef PLF_CPP20_SUPPORT
-				[[likely]]
-			#endif
+			if ((shift_amount %= PLF_TYPE_BITWIDTH) != 0)
 			{
-				size_type current_source = PLF_ARRAY_CAPACITY - (shift_amount / PLF_TYPE_BITWIDTH);
+				const storage_type shifter = PLF_TYPE_BITWIDTH - shift_amount;
 
-				if ((shift_amount %= PLF_TYPE_BITWIDTH) != 0)
+				while (--current_source != 0)
 				{
-					const storage_type shifter = PLF_TYPE_BITWIDTH - shift_amount;
-
-					while (--current_source != 0)
-					{
-						buffer[--current] = (buffer[current_source - 1] >> shifter) | (buffer[current_source] << shift_amount);
-					}
-
-					buffer[--current] = buffer[current_source] << shift_amount;
+					buffer[--current] = (buffer[current_source - 1] >> shifter) | (buffer[current_source] << shift_amount);
 				}
-				else
-				{
-					do
-					{
-						buffer[--current] = buffer[--current_source];
-					} while (current_source != 0);
-				}
+
+				buffer[--current] = buffer[current_source] << shift_amount;
 			}
-
-			std::memset(static_cast<void *>(buffer), 0, current * sizeof(storage_type));
-		}
-		else if (shift_amount != 0)
-		{
-			const storage_type shifter = PLF_TYPE_BITWIDTH - shift_amount;
-			storage_type shift_remainder = 0;
-
-			for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current)
+			else
 			{
-				const storage_type temp = buffer[current];
-				buffer[current] = (temp << shift_amount) | shift_remainder;
-				shift_remainder = temp >> shifter;
+				do
+				{
+					buffer[--current] = buffer[--current_source];
+				} while (current_source != 0);
 			}
 		}
+
+		std::fill_n(buffer, current, 0);
 
 		set_overflow_to_zero();
 		return *this;
@@ -1293,9 +1276,8 @@ namespace std
 #undef PLF_NOEXCEPT
 #undef PLF_EXCEPTIONS_SUPPORT
 #undef PLF_TYPE_BITWIDTH
-#undef PLF_BITSET_SIZE_BYTES_CALC
+#undef PLF_ARRAY_CAPACITY_CALC
 #undef PLF_ARRAY_CAPACITY
-#undef PLF_ARRAY_CAPACITY_BYTES
 #undef PLF_ARRAY_CAPACITY_BITS
 
 #endif // PLF_BITSETB_H
