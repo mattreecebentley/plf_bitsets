@@ -93,7 +93,7 @@
 
 #include <cmath> // log10
 #include <cassert>
-#include <algorithm> // std::copy, std::equal
+#include <algorithm> // std::copy_n, std::equal
 #include <string>	// std::basic_string
 #include <stdexcept> // std::out_of_range
 #include <limits>  // std::numeric_limits
@@ -166,7 +166,7 @@ public:
 
 	PLF_CONSTFUNC bitset(const bitset &source) PLF_NOEXCEPT
 	{
-		std::copy(source.buffer, source.buffer + PLF_ARRAY_CAPACITY, buffer);
+		std::copy_n(source.buffer, PLF_ARRAY_CAPACITY, buffer);
 	}
 
 
@@ -798,7 +798,7 @@ public:
 
 	PLF_CONSTFUNC void operator = (const bitset &source) PLF_NOEXCEPT
 	{
-		std::copy(source.buffer, source.buffer + PLF_ARRAY_CAPACITY, buffer);
+		std::copy_n(source.buffer, PLF_ARRAY_CAPACITY, buffer);
 	}
 
 

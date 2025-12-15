@@ -91,7 +91,7 @@
 #include <cassert>
 #include <cmath> // log10
 #include <string> // std::basic_string
-#include <algorithm> // fill_n, std::copy
+#include <algorithm> // fill_n, std::copy_n
 #include <stdexcept> // std::out_of_range
 #include <limits>  // std::numeric_limits
 #include <bit>  // std::pop_count, std::countr_one, std::countr_zero
@@ -162,7 +162,7 @@ public:
 		buffer(supplied_buffer),
 		total_size(size)
 	{
-		std::copy(source.buffer, source.buffer + PLF_ARRAY_CAPACITY_CALC((source.total_size < total_size) ? source.total_size : total_size), buffer);
+		std::copy_n(source.buffer, PLF_ARRAY_CAPACITY_CALC((source.total_size < total_size) ? source.total_size : total_size), buffer);
 		set_overflow_to_zero(); // In case source.total_size != total_size
 	}
 
@@ -806,7 +806,7 @@ public:
 	PLF_CONSTFUNC void operator = (const bitsetb &source)
 	{
 		check_source_size(source.total_size);
-		std::copy(source.buffer, source.buffer + PLF_ARRAY_CAPACITY_CALC((source.total_size < total_size) ? source.total_size : total_size), buffer);
+		std::copy_n(source.buffer, PLF_ARRAY_CAPACITY_CALC((source.total_size < total_size) ? source.total_size : total_size), buffer);
 	}
 
 

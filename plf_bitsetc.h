@@ -71,7 +71,7 @@ public:
 			allocator_type(source)
 		#endif
 	{
-		std::copy(source.buffer, source.buffer + PLF_ARRAY_CAPACITY_CALC((source.total_size < total_size) ? source.total_size : total_size), buffer);
+		std::copy_n(source.buffer, PLF_ARRAY_CAPACITY_CALC((source.total_size < total_size) ? source.total_size : total_size), buffer);
 		set_overflow_to_zero(); // In case source.total_size != total_size
 	}
 
@@ -95,7 +95,7 @@ public:
 	constexpr void operator = (const bitsetc &source)
 	{
 		check_source_size(source.total_size);
-		std::copy(source.buffer, source.buffer + PLF_ARRAY_CAPACITY_CALC((source.total_size < total_size) ? source.total_size : total_size), buffer);
+		std::copy_n(source.buffer, PLF_ARRAY_CAPACITY_CALC((source.total_size < total_size) ? source.total_size : total_size), buffer);
 	}
 
 
@@ -116,7 +116,7 @@ public:
 	constexpr void change_size(const size_type new_size)
  	{
 		storage_type *new_buffer = std::allocator_traits<allocator_type>::allocate(*this, PLF_ARRAY_CAPACITY_CALC(new_size), buffer);
-		std::copy(new_buffer, new_buffer + PLF_ARRAY_CAPACITY_CALC((new_size > total_size) ? total_size : new_size), buffer);
+		std::copy_n(new_buffer, PLF_ARRAY_CAPACITY_CALC((new_size > total_size) ? total_size : new_size), buffer);
 
 		if (new_size > total_size) reset_range(total_size, new_size);
 
