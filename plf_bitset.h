@@ -1258,15 +1258,14 @@ public:
 		{
 			return to_type<unsigned long long>();
 		}
-
-
-
+	
+	
+	
 		PLF_CONSTFUNC unsigned long long to_reverse_ullong() const
 		{
 			return to_reverse_type<unsigned long long>();
 		}
 	#endif
-
 
 
 	PLF_CONSTFUNC void swap(bitset &source) PLF_NOEXCEPT

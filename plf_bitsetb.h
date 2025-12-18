@@ -92,6 +92,7 @@
 #include <cmath> // log10
 #include <string> // std::basic_string
 #include <algorithm> // fill_n, std::copy_n
+#include <memory> // std::uninitialized_copy_n
 #include <stdexcept> // std::out_of_range
 #include <limits>  // std::numeric_limits
 #include <bit>  // std::pop_count, std::countr_one, std::countr_zero
@@ -152,9 +153,7 @@ public:
 	PLF_CONSTFUNC bitsetb(storage_type * const supplied_buffer, const size_type size):
 		buffer(supplied_buffer),
 		total_size(size)
-	{
-		reset();
-	}
+	{}
 
 
 
@@ -162,7 +161,7 @@ public:
 		buffer(supplied_buffer),
 		total_size(size)
 	{
-		std::copy_n(source.buffer, PLF_ARRAY_CAPACITY_CALC((source.total_size < total_size) ? source.total_size : total_size), buffer);
+		std::uninitialized_copy_n(source.buffer, PLF_ARRAY_CAPACITY_CALC((source.total_size < total_size) ? source.total_size : total_size), buffer);
 		set_overflow_to_zero(); // In case source.total_size != total_size
 	}
 
@@ -218,7 +217,6 @@ public:
  		const size_type blockindex = index / PLF_TYPE_BITWIDTH, shift = index % PLF_TYPE_BITWIDTH;
 		buffer[blockindex] = (buffer[blockindex] & ~(storage_type(1) << shift)) | (static_cast<storage_type>(value) << shift);
 	}
-
 
 
 
@@ -1215,21 +1213,17 @@ public:
 
 
 
-	#if (defined(__cplusplus) && __cplusplus >= 201103L) || _MSC_VER >= 1600
-
-		PLF_CONSTFUNC unsigned long long to_ullong() const
-		{
-			return to_type<unsigned long long>();
-		}
+	PLF_CONSTFUNC unsigned long long to_ullong() const
+	{
+		return to_type<unsigned long long>();
+	}
 
 
 
-		PLF_CONSTFUNC unsigned long long to_rullong() const
-		{
-			return to_reverse_type<unsigned long long>();
-		}
-
-	#endif
+	PLF_CONSTFUNC unsigned long long to_rullong() const
+	{
+		return to_reverse_type<unsigned long long>();
+	}
 
 
 
@@ -1275,6 +1269,7 @@ namespace std
 #undef PLF_CONSTFUNC
 #undef PLF_NOEXCEPT
 #undef PLF_EXCEPTIONS_SUPPORT
+
 #undef PLF_TYPE_BITWIDTH
 #undef PLF_ARRAY_CAPACITY_CALC
 #undef PLF_ARRAY_CAPACITY

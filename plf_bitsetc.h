@@ -56,23 +56,20 @@ public:
 
 	// Note: bitsetc is C++20-Only
 	constexpr bitsetc(const size_type set_size):
-		base(std::allocator_traits<allocator_type>::allocate(*this, PLF_ARRAY_CAPACITY_CALC(set_size), 0), set_size)
+		base(std::allocator_traits<allocator_type>::allocate(*this, PLF_ARRAY_CAPACITY_CALC(set_size), 0), set_size) // sets total_size in base as well
 	{
+		std::uninitialized_fill_n(buffer, PLF_ARRAY_CAPACITY, 0);
 		reset();
 	}
 
 
 
 	constexpr bitsetc(const bitsetc &source):
-		base(std::allocator_traits<allocator_type>::allocate(*this, PLF_ARRAY_CAPACITY_CALC(source.total_size), 0), source.total_size),
-		#if (defined(__cplusplus) && __cplusplus >= 201103L) || _MSC_VER >= 1700
-			allocator_type(std::allocator_traits<allocator_type>::select_on_container_copy_construction(source))
-		#else
-			allocator_type(source)
-		#endif
+		base(nullptr, source.total_size),
+		allocator_type(std::allocator_traits<allocator_type>::select_on_container_copy_construction(source))
 	{
-		std::copy_n(source.buffer, PLF_ARRAY_CAPACITY_CALC((source.total_size < total_size) ? source.total_size : total_size), buffer);
-		set_overflow_to_zero(); // In case source.total_size != total_size
+		buffer = std::allocator_traits<allocator_type>::allocate(*this, PLF_ARRAY_CAPACITY, 0);
+		std::uninitialized_copy_n(source.buffer, PLF_ARRAY_CAPACITY, buffer);
 	}
 
 
@@ -80,47 +77,67 @@ public:
 	constexpr bitsetc(bitsetc &&source) noexcept:
 		base(source.buffer, source.total_size)
 	{
-		source.buffer = NULL;
+		source.buffer = nullptr;
 		source.total_size = 0;
 	}
 
 
+
 	constexpr ~bitsetc() noexcept
 	{
-		std::allocator_traits<allocator_type>::deallocate(*this, buffer, PLF_ARRAY_CAPACITY_CALC(total_size));
+		std::allocator_traits<allocator_type>::deallocate(*this, buffer, PLF_ARRAY_CAPACITY);
 	}
 
 
 
 	constexpr void operator = (const bitsetc &source)
 	{
-		check_source_size(source.total_size);
-		std::copy_n(source.buffer, PLF_ARRAY_CAPACITY_CALC((source.total_size < total_size) ? source.total_size : total_size), buffer);
+		if constexpr (std::allocator_traits<allocator_type>::propagate_on_container_copy_assignment::value)
+		{
+			if constexpr (!std::allocator_traits<allocator_type>::is_always_equal::value)
+			{
+				if (static_cast<allocator_type &>(*this) != static_cast<const allocator_type &>(source))
+				{ // Deallocate existing block as source allocator is not necessarily able to do so
+					std::allocator_traits<allocator_type>::deallocate(*this, buffer, PLF_ARRAY_CAPACITY);
+					buffer = nullptr;
+				}
+			}
+
+			static_cast<allocator_type &>(*this) = static_cast<const allocator_type &>(source);
+		}
+
+		if (PLF_ARRAY_CAPACITY != PLF_ARRAY_CAPACITY_CALC(source.total_size) || buffer == nullptr)
+		{
+			if (buffer != nullptr) std::allocator_traits<allocator_type>::deallocate(*this, buffer, PLF_ARRAY_CAPACITY);
+			buffer = std::allocator_traits<allocator_type>::allocate(*this, PLF_ARRAY_CAPACITY_CALC(source.total_size), 0);
+		}
+
+		total_size = source.total_size;
+		std::uninitialized_copy_n(source.buffer, PLF_ARRAY_CAPACITY, buffer); // If buffer hasn't been replaced, this is still fine as it is a trivial type
 	}
 
 
 
-	#ifdef PLF_MOVE_SEMANTICS_SUPPORT
-		constexpr void operator = (bitsetc &&source) noexcept
-		{
-			std::allocator_traits<allocator_type>::deallocate(*this, buffer, PLF_ARRAY_CAPACITY_CALC(total_size));
-			buffer = source.buffer;
-			total_size = source.total_size;
-			source.buffer = NULL;
-			source.total_size = 0;
-		}
-	#endif
+	constexpr void operator = (bitsetc &&source) noexcept
+	{
+		std::allocator_traits<allocator_type>::deallocate(*this, buffer, PLF_ARRAY_CAPACITY);
+		buffer = source.buffer;
+		total_size = source.total_size;
+		source.buffer = nullptr;
+		source.total_size = 0;
+	}
 
 
 
 	constexpr void change_size(const size_type new_size)
  	{
 		storage_type *new_buffer = std::allocator_traits<allocator_type>::allocate(*this, PLF_ARRAY_CAPACITY_CALC(new_size), buffer);
-		std::copy_n(new_buffer, PLF_ARRAY_CAPACITY_CALC((new_size > total_size) ? total_size : new_size), buffer);
+		std::uninitialized_copy_n(new_buffer, PLF_ARRAY_CAPACITY_CALC((new_size > total_size) ? total_size : new_size), buffer);
+		set_overflow_to_zero();
 
 		if (new_size > total_size) reset_range(total_size, new_size);
 
-		std::allocator_traits<allocator_type>::deallocate(*this, buffer, PLF_ARRAY_CAPACITY_CALC(total_size));
+		std::allocator_traits<allocator_type>::deallocate(*this, buffer, PLF_ARRAY_CAPACITY);
 		buffer = new_buffer;
 		total_size = new_size;
 		set_overflow_to_zero();
@@ -182,7 +199,7 @@ public:
 	{
 		check_source_size(source.total_size);
 		bitsetc result(total_size);
-		for (size_type current = 0, end = PLF_ARRAY_CAPACITY_CALC(total_size); current != end; ++current) result.buffer[current] = buffer[current] & source.buffer[current];
+		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) result.buffer[current] = buffer[current] & source.buffer[current];
 		return result;
 	}
 
@@ -192,7 +209,7 @@ public:
 	{
 		check_source_size(source.total_size);
 		bitsetc result(total_size);
-		for (size_type current = 0, end = PLF_ARRAY_CAPACITY_CALC(total_size); current != end; ++current) result.buffer[current] = buffer[current] | source.buffer[current];
+		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) result.buffer[current] = buffer[current] | source.buffer[current];
 		return result;
 	}
 
@@ -202,7 +219,7 @@ public:
 	{
 		check_source_size(source.total_size);
 		bitsetc result(total_size);
-		for (size_type current = 0, end = PLF_ARRAY_CAPACITY_CALC(total_size); current != end; ++current) result.buffer[current] = buffer[current] ^ source.buffer[current];
+		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) result.buffer[current] = buffer[current] ^ source.buffer[current];
 		return result;
 	}
 
@@ -234,6 +251,7 @@ namespace std
 }
 
 #undef PLF_TYPE_BITWIDTH
+#undef PLF_ARRAY_CAPACITY
 #undef PLF_ARRAY_CAPACITY_CALC
 
 #endif // PLF_BITSETC_H
