@@ -75,8 +75,29 @@ public:
 
 
 	constexpr bitsetc(bitsetc &&source) noexcept:
-		base(source.buffer, source.total_size)
+		base(source.buffer, source.total_size),
+		allocator_type(static_cast<allocator_type &>(source))
 	{
+		source.buffer = nullptr;
+		source.total_size = 0;
+	}
+
+
+
+	constexpr bitsetc(bitsetc &&source, const std::type_identity_t<allocator_type> &alloc) noexcept:
+		base(source.buffer, source.total_size),
+		allocator_type(alloc)
+	{
+		if constexpr (!std::allocator_traits<allocator_type>::is_always_equal::value)
+		{
+			if (alloc != static_cast<allocator_type &>(source))
+			{
+				buffer = nullptr;
+				*this = source;
+				source.~bitsetc();
+			}
+		}
+
 		source.buffer = nullptr;
 		source.total_size = 0;
 	}
