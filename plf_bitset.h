@@ -181,7 +181,7 @@ public:
 
 	PLF_CONSTFUNC bool test(const size_type index) const
 	{
-		if PLF_CONSTEXPR (!hardened) check_index_is_within_size(index); // If hardened, will be checked in [] below
+		if PLF_CONSTEXPR (!hardened) check_index_is_within_size(index); // If hardened, will be checked in []
 		return operator [](index);
 	}
 
@@ -466,7 +466,7 @@ public:
 	{
 		return !any_range(begin, end);
 	}
-	
+
 
 
 private:
@@ -642,7 +642,7 @@ private:
 		set_overflow_to_zero();
 		return std::numeric_limits<size_type>::max();
 	}
-	
+
 
 
 public:
@@ -838,7 +838,7 @@ public:
 		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) result.buffer[current] = buffer[current] & source.buffer[current];
 		return result;
 	}
-	
+
 
 
 	PLF_CONSTFUNC bitset & operator |= (const bitset& source) PLF_NOEXCEPT
@@ -855,7 +855,7 @@ public:
 		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) result.buffer[current] = buffer[current] | source.buffer[current];
 		return result;
 	}
-	
+
 
 
 	PLF_CONSTFUNC bitset & operator ^= (const bitset& source) PLF_NOEXCEPT
@@ -872,7 +872,7 @@ public:
 		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) result.buffer[current] = buffer[current] ^ source.buffer[current];
 		return result;
 	}
-	
+
 
 
 	PLF_CONSTFUNC bitset operator ~ () const
@@ -1258,9 +1258,9 @@ public:
 		{
 			return to_type<unsigned long long>();
 		}
-	
-	
-	
+
+
+
 		PLF_CONSTFUNC unsigned long long to_reverse_ullong() const
 		{
 			return to_reverse_type<unsigned long long>();

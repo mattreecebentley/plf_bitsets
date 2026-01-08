@@ -181,6 +181,7 @@ public:
 
 	PLF_CONSTFUNC bool operator [] (const size_type index) const
 	{
+		if PLF_CONSTEXPR (hardened) check_index_is_within_size(index);
 		return static_cast<bool>((buffer[index / PLF_TYPE_BITWIDTH] >> (index % PLF_TYPE_BITWIDTH)) & storage_type(1));
 	}
 
@@ -188,7 +189,7 @@ public:
 
 	PLF_CONSTFUNC bool test(const size_type index) const
 	{
-		if PLF_CONSTFUNC (hardened) check_index_is_within_size(index);
+		if PLF_CONSTEXPR (!hardened) check_index_is_within_size(index); // If hardened, will be checked in []
 		return operator [](index);
 	}
 

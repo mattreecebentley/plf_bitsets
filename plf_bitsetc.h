@@ -44,22 +44,29 @@ class bitsetc : public bitsetb<storage_type, hardened>, private allocator_type
 private:
 	typedef bitsetb<storage_type> base;
 
+	// Just to save on typing:
 	using base::buffer;
 	using base::total_size;
-	using base::set_overflow_to_one;
-	using base::set_overflow_to_zero;
 	using base::check_source_size;
 
 
 public:
 	typedef std::size_t size_type;
 
+
+
+	// Avoid compiler getting an ambiguous match with the std library operators:
+	using base::operator ==;
+	using base::operator !=;
+
+
+
 	// Note: bitsetc is C++20-Only
 	constexpr bitsetc(const size_type set_size):
 		base(std::allocator_traits<allocator_type>::allocate(*this, PLF_ARRAY_CAPACITY_CALC(set_size), 0), set_size) // sets total_size in base as well
 	{
 		std::uninitialized_fill_n(buffer, PLF_ARRAY_CAPACITY, 0);
-		reset();
+		base::reset();
 	}
 
 
@@ -154,14 +161,14 @@ public:
  	{
 		storage_type *new_buffer = std::allocator_traits<allocator_type>::allocate(*this, PLF_ARRAY_CAPACITY_CALC(new_size), buffer);
 		std::uninitialized_copy_n(new_buffer, PLF_ARRAY_CAPACITY_CALC((new_size > total_size) ? total_size : new_size), buffer);
-		set_overflow_to_zero();
+		base::set_overflow_to_zero();
 
 		if (new_size > total_size) reset_range(total_size, new_size);
 
 		std::allocator_traits<allocator_type>::deallocate(*this, buffer, PLF_ARRAY_CAPACITY);
 		buffer = new_buffer;
 		total_size = new_size;
-		set_overflow_to_zero();
+		base::set_overflow_to_zero();
  	}
 
 
@@ -176,44 +183,6 @@ public:
 		source.total_size = swap_size;
 	}
 
-
-
-	using base::operator [];
-	using base::test;
-	using base::set;
-	using base::set_range;
-	using base::reset;
-	using base::reset_range;
-	using base::flip;
-	using base::all;
-	using base::none;
-	using base::any;
-	using base::count;
-	using base::first_one;
-	using base::next_one;
-	using base::first_zero;
-	using base::next_zero;
-	using base::last_one;
-	using base::prev_one;
-	using base::last_zero;
-	using base::prev_zero;
-	using base::size;
-	using base::operator >>=;
-	using base::shift_left_range;
-	using base::shift_left_range_one;
-	using base::operator <<=;
-	using base::to_string;
-	using base::to_rstring;
-	using base::to_srstring;
-	using base::to_ulong;
-	using base::to_rulong;
-	using base::to_ullong;
-	using base::to_rullong;
-	using base::operator ==;
-	using base::operator !=;
-	using base::operator &=;
-	using base::operator |=;
-	using base::operator ^=;
 
 
 	constexpr bitsetc operator & (const bitsetc& source) const noexcept
