@@ -41,6 +41,7 @@
 	#if _MSC_VER >= 1900
 		#undef PLF_NOEXCEPT
 		#define PLF_NOEXCEPT noexcept
+		#define PLF_CPP11_SUPPORT
 	#endif
 
 	#if defined(_MSVC_LANG) && (_MSVC_LANG >= 201703L)
@@ -54,20 +55,27 @@
 		#define PLF_CPP20_SUPPORT
 	#endif
 
+	#if defined(_MSVC_LANG) && (_MSVC_LANG >= 202302L) && _MSC_VER >= 1944
+		#define PLF_CONSTEVAL_SUPPORT
+	#endif
+
 #elif defined(__cplusplus) && __cplusplus >= 201103L // C++11 support, at least
 	#if defined(__GNUC__) && defined(__GNUC_MINOR__) && !defined(__clang__) // If compiler is GCC/G++
 		#if (__GNUC__ == 4 && __GNUC_MINOR__ >= 6) || __GNUC__ > 4
 			#undef PLF_NOEXCEPT
 			#define PLF_NOEXCEPT noexcept
+			#define PLF_CPP11_SUPPORT
 		#endif
 	#elif defined(__clang__)
 		#if __has_feature(cxx_noexcept)
 			#undef PLF_NOEXCEPT
 			#define PLF_NOEXCEPT noexcept
+			#define PLF_CPP11_SUPPORT
 		#endif
-	#else // Assume noexcept support for other compilers
+	#else // Assume support for other compilers
 		#undef PLF_NOEXCEPT
 		#define PLF_NOEXCEPT noexcept
+		#define PLF_CPP11_SUPPORT
 	#endif
 
 	#if __cplusplus >= 201703L && ((defined(__clang__) && ((__clang_major__ == 3 && __clang_minor__ == 9) || __clang_major__ > 3)) || (defined(__GNUC__) && __GNUC__ >= 7) || (!defined(__clang__) && !defined(__GNUC__))) // assume correct C++17 implementation for non-gcc/clang compilers
@@ -76,29 +84,37 @@
 	#endif
 
 	// The following line is a little different from other plf:: containers because we need constexpr basic_string in order to make the to_string function constexpr:
-	#if __cplusplus > 201704L && ((((defined(__clang__) && __clang_major__ >= 15) || (defined(__GNUC__) && (__GNUC__ >= 12))) && ((defined(_LIBCPP_VERSION) && _LIBCPP_VERSION >= 15) || (defined(__GLIBCXX__) &&	_GLIBCXX_RELEASE >= 12))) || (!defined(__clang__) && !defined(__GNUC__)))
+	#if __cplusplus >= 202001L && ((((defined(__clang__) && __clang_major__ >= 15) || (defined(__GNUC__) && (__GNUC__ >= 12))) && ((defined(_LIBCPP_VERSION) && _LIBCPP_VERSION >= 15) || (defined(__GLIBCXX__) &&	_GLIBCXX_RELEASE >= 12))) || (!defined(__clang__) && !defined(__GNUC__)))
 		#undef PLF_CONSTFUNC
 		#define PLF_CONSTFUNC constexpr
 		#define PLF_CPP20_SUPPORT
+	#endif
+
+	#if __cplusplus >= 202302L && ((defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && (__GNUC__ >= 12)))
+		#define PLF_CONSTEVAL_SUPPORT
 	#endif
 #endif
 
 
 #define PLF_TYPE_BITWIDTH (sizeof(storage_type) * 8)
-#define PLF_BITSET_SIZE_BYTES ((total_size + 7) / (sizeof(unsigned char) * 8)) // ie. round up to nearest byte
 #define PLF_ARRAY_CAPACITY ((total_size + PLF_TYPE_BITWIDTH - 1) / PLF_TYPE_BITWIDTH) // ie. round up to nearest unit of storage
-#define PLF_ARRAY_END (buffer + PLF_ARRAY_CAPACITY)
 #define PLF_ARRAY_CAPACITY_BITS (PLF_ARRAY_CAPACITY * PLF_TYPE_BITWIDTH)
+#define PLF_ARRAY_CAPACITY_BYTES (PLF_ARRAY_CAPACITY * sizeof(storage_type))
 
 
 #include <cmath> // log10
 #include <cassert>
-#include <algorithm> // std::copy_n, std::equal
 #include <string>	// std::basic_string
 #include <stdexcept> // std::out_of_range
 #include <limits>  // std::numeric_limits
-#include <bit>  // std::pop_count, std::countr_one, std::countr_zero
 #include <ostream>
+#include <cstring>	// memset, size_t
+#include <algorithm> // std::copy, std::equal
+
+#ifdef PLF_CPP20_SUPPORT
+	#include <bit>  // std::pop_count, std::countr_one, std::countr_zero
+#endif
+
 
 
 namespace plf
@@ -166,7 +182,7 @@ public:
 
 	PLF_CONSTFUNC bitset(const bitset &source) PLF_NOEXCEPT
 	{
-		std::copy_n(source.buffer, PLF_ARRAY_CAPACITY, buffer);
+		std::copy(source.buffer, source.buffer + PLF_ARRAY_CAPACITY, buffer); // copy_n not C++03-compatible
 	}
 
 
@@ -189,7 +205,17 @@ public:
 
 	PLF_CONSTFUNC void set() PLF_NOEXCEPT
 	{
-		std::fill_n(buffer, PLF_ARRAY_CAPACITY, std::numeric_limits<storage_type>::max());
+		#ifdef PLF_CONSTEVAL_SUPPORT
+			if consteval
+			{
+				std::fill_n(buffer, PLF_ARRAY_CAPACITY, std::numeric_limits<storage_type>::max()); // fill_n is very slow compared to memset under gcc, particularly in debug mode, but memset isn't constexpr
+			}
+			else
+		#endif
+		{
+			std::memset(static_cast<void *>(buffer), std::numeric_limits<unsigned char>::max(), PLF_ARRAY_CAPACITY_BYTES);
+		}
+
 		set_overflow_to_zero();
 	}
 
@@ -237,7 +263,16 @@ public:
 			buffer[begin_type_index] |= std::numeric_limits<storage_type>::max() << begin_subindex;
 
 			// Fill all intermediate storage_type's (if any):
-			std::fill_n(buffer + begin_type_index + 1, (end_type_index - 1) - begin_type_index, std::numeric_limits<storage_type>::max());
+			#ifdef PLF_CONSTEVAL_SUPPORT
+				if consteval
+				{
+					std::fill_n(buffer + begin_type_index + 1, (end_type_index - 1) - begin_type_index, std::numeric_limits<storage_type>::max());
+				}
+				else
+			#endif
+			{
+				std::memset(static_cast<void *>(buffer + begin_type_index + 1), std::numeric_limits<unsigned char>::max(), ((end_type_index - 1) - begin_type_index) * sizeof(storage_type));
+			}
 
 			// Write last storage_type:
 			buffer[end_type_index] |= std::numeric_limits<storage_type>::max() >> distance_to_end_storage;
@@ -266,7 +301,16 @@ public:
 
 	PLF_CONSTFUNC void reset() PLF_NOEXCEPT
 	{
-		std::fill_n(buffer, PLF_ARRAY_CAPACITY, 0);
+		#ifdef PLF_CONSTEVAL_SUPPORT
+			if consteval
+			{
+				std::fill_n(buffer, PLF_ARRAY_CAPACITY, 0);
+			}
+			else
+		#endif
+		{
+			std::memset(static_cast<void *>(buffer), 0, PLF_ARRAY_CAPACITY_BYTES);
+		}
 	}
 
 
@@ -301,7 +345,18 @@ public:
 		if (begin_type_index != end_type_index)
 		{
 			buffer[begin_type_index] &= ~(std::numeric_limits<storage_type>::max() << begin_subindex);
-			std::fill_n(buffer + begin_type_index + 1, (end_type_index - 1) - begin_type_index, 0);
+
+			#ifdef PLF_CONSTEVAL_SUPPORT
+				if consteval
+				{
+					std::fill_n(buffer + begin_type_index + 1, (end_type_index - 1) - begin_type_index, 0);
+				}
+				else
+			#endif
+			{
+				std::memset(static_cast<void *>(buffer + begin_type_index + 1), 0, ((end_type_index - 1) - begin_type_index) * sizeof(storage_type));
+			}
+
 			buffer[end_type_index] &= ~(std::numeric_limits<storage_type>::max() >> distance_to_end_storage);
 		}
 		else
@@ -385,7 +440,7 @@ public:
 				}
 			}
 
-			// Write last storage_type:
+			// Check last storage_type:
 			if ((buffer[end_type_index] | ~(std::numeric_limits<storage_type>::max() >> distance_to_end_storage)) != std::numeric_limits<storage_type>::max())
 			{
 				set_overflow_to_zero();
@@ -798,14 +853,23 @@ public:
 
 	PLF_CONSTFUNC void operator = (const bitset &source) PLF_NOEXCEPT
 	{
-		std::copy_n(source.buffer, PLF_ARRAY_CAPACITY, buffer);
+		std::copy(source.buffer, source.buffer + PLF_ARRAY_CAPACITY, buffer);
 	}
 
 
 
  	PLF_CONSTFUNC bool operator == (const bitset &source) const PLF_NOEXCEPT
 	{
- 		return std::equal(source.buffer, source.buffer + PLF_ARRAY_CAPACITY, buffer);
+		#ifdef PLF_CONSTEVAL_SUPPORT
+			if consteval
+			{
+				return std::equal(source.buffer, source.buffer + PLF_ARRAY_CAPACITY, buffer);
+			}
+			else
+		#endif
+		{
+			return std::memcmp(static_cast<const void *>(buffer), static_cast<const void *>(source.buffer), PLF_ARRAY_CAPACITY_BYTES) == 0;
+		}
 	}
 
 
@@ -921,7 +985,16 @@ public:
 				}
 			}
 
-			std::fill_n(buffer + current, PLF_ARRAY_CAPACITY - current, 0);
+			#ifdef PLF_CONSTEVAL_SUPPORT
+				if consteval
+				{
+					std::fill_n(buffer + current, PLF_ARRAY_CAPACITY - current, 0);
+				}
+				else
+			#endif
+			{
+				std::memset(static_cast<void *>(buffer + current), 0, (PLF_ARRAY_CAPACITY - current) * sizeof(storage_type));
+			}
 		}
 		else if (shift_amount != 0)
 		{
@@ -970,7 +1043,7 @@ public:
 
 				if ((shift_amount %= PLF_TYPE_BITWIDTH) != 0)
 				{
-					const storage_type shifter = PLF_TYPE_BITWIDTH - shift_amount;
+					const storage_type shifter = static_cast<storage_type>(PLF_TYPE_BITWIDTH - shift_amount);
 
 					for (; current_source != end; ++current, ++current_source)
 					{
@@ -990,11 +1063,20 @@ public:
 				}
 			}
 
-			std::fill_n(buffer + current, PLF_ARRAY_CAPACITY - current, 0);
+			#ifdef PLF_CONSTEVAL_SUPPORT
+				if consteval
+				{
+					std::fill_n(buffer + current, PLF_ARRAY_CAPACITY - current, 0);
+				}
+				else
+			#endif
+			{
+				std::memset(static_cast<void *>(buffer + current), 0, (PLF_ARRAY_CAPACITY - current) * sizeof(storage_type));
+			}
 		}
 		else if (shift_amount != 0)
 		{
-			const storage_type shifter = PLF_TYPE_BITWIDTH - shift_amount;
+			const storage_type shifter = static_cast<storage_type>(PLF_TYPE_BITWIDTH - shift_amount);
 
 			for (size_type current = first_word_index; current != end; ++current)
 			{
@@ -1005,7 +1087,7 @@ public:
 		}
 
 		// Restore X bits to first word
-		const storage_type remainder = first - (first_word_index * PLF_TYPE_BITWIDTH);
+		const storage_type remainder = static_cast<storage_type>(first - (first_word_index * PLF_TYPE_BITWIDTH));
   		buffer[first_word_index] = (buffer[first_word_index] & (std::numeric_limits<storage_type>::max() << remainder)) | (first_word & (std::numeric_limits<storage_type>::max() >> (PLF_TYPE_BITWIDTH - remainder)));
 	}
 
@@ -1027,7 +1109,7 @@ public:
 		buffer[end] >>= 1;
 
 		// Restore X bits to first word
-		const storage_type remainder = first - (first_word_index * PLF_TYPE_BITWIDTH);
+		const storage_type remainder = static_cast<storage_type>(first - (first_word_index * PLF_TYPE_BITWIDTH));
   		buffer[first_word_index] = (buffer[first_word_index] & (std::numeric_limits<storage_type>::max() << remainder)) | (first_word & (std::numeric_limits<storage_type>::max() >> (PLF_TYPE_BITWIDTH - remainder)));
 	}
 
@@ -1064,7 +1146,16 @@ public:
 			}
 		}
 
-		std::fill_n(buffer, current, 0);
+		#ifdef PLF_CONSTEVAL_SUPPORT
+			if consteval
+			{
+				std::fill_n(buffer, current, 0);
+			}
+			else
+		#endif
+		{
+			std::memset(static_cast<void *>(buffer), 0, current * sizeof(storage_type));
+		}
 
 		set_overflow_to_zero();
 		return *this;
@@ -1080,11 +1171,17 @@ public:
 
 
 
-	template <class char_type = char, class traits = std::char_traits<char_type>, class allocator_type = std::allocator<char_type> >
-	PLF_CONSTFUNC std::basic_string<char_type, traits, allocator_type> to_string(const char_type zero = char_type('0'), char_type one = char_type('1')) const
-	{
+	#ifdef PLF_CPP11_SUPPORT
+		template <class char_type = char, class traits = std::char_traits<char_type>, class string_allocator_type = std::allocator<char_type> >
+		PLF_CONSTFUNC std::basic_string<char_type, traits, string_allocator_type> to_string(const char_type zero = char_type('0'), char_type one = char_type('1')) const
+		{
+			std::basic_string<char_type, traits, string_allocator_type> temp(total_size, zero);
+	#else
+		PLF_CONSTFUNC std::basic_string<char> to_string(const char zero = char('0'), char one = char('1')) const
+		{
+			std::basic_string<char> temp(total_size, zero);
+	#endif
 		one -= zero;
-		std::basic_string<char_type, traits, allocator_type> temp(total_size, zero);
 
 		for (size_type index = 0, end = PLF_ARRAY_CAPACITY; index != end; ++index)
 		{
@@ -1117,11 +1214,18 @@ public:
 
 
 
-	template <class char_type = char, class traits = std::char_traits<char_type>, class allocator_type = std::allocator<char_type> >
-	PLF_CONSTFUNC std::basic_string<char_type, traits, allocator_type> to_rstring(const char_type zero = char_type('0'), char_type one = char_type('1')) const
-	{
+
+	#ifdef PLF_CPP11_SUPPORT
+		template <class char_type = char, class traits = std::char_traits<char_type>, class string_allocator_type = std::allocator<char_type> >
+		PLF_CONSTFUNC std::basic_string<char_type, traits, string_allocator_type> to_rstring(const char_type zero = char_type('0'), char_type one = char_type('1')) const
+		{
+			std::basic_string<char_type, traits, string_allocator_type> temp(total_size, zero);
+	#else
+		PLF_CONSTFUNC std::basic_string<char> to_rstring(const char zero = char('0'), char one = char('1')) const
+		{
+			std::basic_string<char, std::char_traits<char>, std::allocator<char> > temp(total_size, zero);
+	#endif
 		one -= zero;
-		std::basic_string<char_type, traits, allocator_type> temp(total_size, zero);
 
 		for (size_type index = 0, end = PLF_ARRAY_CAPACITY; index != end; ++index)
 		{
@@ -1154,40 +1258,6 @@ public:
 
 
 
-	PLF_CONSTFUNC std::basic_string<char> to_srstring() const
-	{
-		char temp[total_size]; // Hella faster in benchmarking to write to this array on the stack then construct the basic_string on return, than to write on the heap or directly to the basic_string
-
-		for (size_type index = 0, end = PLF_ARRAY_CAPACITY; index != end; ++index)
-		{
- 			if (buffer[index] != 0)
- 			{
- 				const size_type string_index = index * PLF_TYPE_BITWIDTH;
- 				const storage_type value = buffer[index];
-
-				#ifdef PLF_CPP20_SUPPORT
-					if constexpr (total_size % PLF_TYPE_BITWIDTH == 0)
-					{
-						for (storage_type subindex = 0, sub_end = PLF_TYPE_BITWIDTH; subindex != sub_end; ++subindex)
-						{
-							temp[string_index + subindex] = ((value >> subindex) & storage_type(1)) + 48;
-						}
-					}
-					else
-				#endif
-				{
-					for (storage_type subindex = 0, sub_end = PLF_TYPE_BITWIDTH; subindex != sub_end && (string_index + subindex) != total_size; ++subindex)
-					{
-						temp[string_index + subindex] = ((value >> subindex) & storage_type(1)) + 48;
-					}
-				}
-			}
-		}
-
-		return std::basic_string<char>(temp, total_size);
-	}
-
-
 
 private:
 
@@ -1213,7 +1283,7 @@ private:
 
 		for (size_type index = 0, multiplier = 1; index != total_size; ++index, multiplier *= 10)
 		{
-			value += operator [](index) * multiplier;
+			value += static_cast<number_type>(operator [](index) * multiplier);
 		}
 
 		return value;
@@ -1253,7 +1323,7 @@ public:
 
 
 
-	#if (defined(__cplusplus) && __cplusplus >= 201103L) || _MSC_VER >= 1600
+	#ifdef PLF_CPP11_SUPPORT
 		PLF_CONSTFUNC unsigned long long to_ullong() const
 		{
 			return to_type<unsigned long long>();
@@ -1261,7 +1331,7 @@ public:
 
 
 
-		PLF_CONSTFUNC unsigned long long to_reverse_ullong() const
+		PLF_CONSTFUNC unsigned long long to_rullong() const
 		{
 			return to_reverse_type<unsigned long long>();
 		}
@@ -1288,7 +1358,6 @@ namespace std
 	}
 
 
-
 	template<std::size_t total_size, typename storage_type, bool hardened>
 	PLF_CONSTFUNC ostream& operator << (ostream &os, const plf::bitset<total_size, storage_type, hardened> &bs)
 	{
@@ -1297,15 +1366,17 @@ namespace std
 }
 
 
+#undef PLF_CONSTEVAL_SUPPORT
+#undef PLF_CPP11_SUPPORT
 #undef PLF_CPP20_SUPPORT
 #undef PLF_CONSTFUNC
 #undef PLF_CONSTEXPR
 #undef PLF_NOEXCEPT
 #undef PLF_EXCEPTIONS_SUPPORT
+
 #undef PLF_TYPE_BITWIDTH
-#undef PLF_BITSET_SIZE_BYTES
 #undef PLF_ARRAY_CAPACITY
-#undef PLF_ARRAY_END
 #undef PLF_ARRAY_CAPACITY_BITS
+#undef PLF_ARRAY_CAPACITY_BYTES
 
 #endif // PLF_BITSET_H

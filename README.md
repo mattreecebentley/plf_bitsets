@@ -1,9 +1,9 @@
 # plf_bitsets
 plf::bitset implements all the functionality of std::bitset with a few small exceptions (some constructors, some minor function differences). 
 
-plf::bitsetb is a 'borrowing' bitset, which has it's buffer and size supplied by the user in the constructor, instead of allocating itself. This is useful for treating any particular block of memory you happen to have as a bitset. Most of it's functionality is the same as plf::bitset, though it also has move construction/assignment.
+plf::bitsetb with it's first template parameter, "user_supplied_buffer" set to 'true', is a 'borrowing' bitset, which has it's buffer and size supplied by the user in the constructor, instead of allocating itself. This is useful for treating any particular block of memory you happen to have as a bitset. Most of it's functionality is the same as plf::bitset, though it also has move construction/assignment.
 
-plf::bitsetc inherits from bitsetb but allocates it's own buffer on the heap and deallocates on destruction, while it's size is supplied by the constructor. This is useful if you have a non-templated class where you want to have differently-sized member bitsets between class instances. 
+plf::bitsetb with it's first template parameter, "user_supplied_buffer" set to 'false', allocates it's own buffer on the heap and deallocates on destruction, while it's size is supplied by the constructor. This is useful if you have a non-templated class where you want to have differently-sized member bitsets between class instances.
 
 
 As a brief overview of plf::bitset's performance characteristics, versus std::bitset under GCC-libstdc++/MSVC-MSSTL respectively:
@@ -20,8 +20,8 @@ Under debug builds it has:
 * 206%/31% faster set(position, value).
 * 360%/132% faster operator [ ].
 * 175%/40% faster overall in test suite benchmarks
-    
-The benchmarks on the project page (https://plflib.org/bitsets.htm) give more details. Most other performance characteristics are more or less the same between plf and std. 
+
+The benchmarks on the project page (https://plflib.org/bitsets.htm) give more details. Most other performance characteristics are more or less the same between plf and std.
 
 All the bitsets have additional functionality:
 * Copy constructor/assignment
@@ -31,7 +31,7 @@ All the bitsets have additional functionality:
 * An allocation-free noexcept swap() using the XOR method.
 * Functions for index-congruent to_string and to_ulong/ullong functions.
 
-They don't implement the from-string or from-ulong/ullong constructors. Index bounds-checking for functions is supported by the third template parameter, 'bool hardened' (false default), on plf::bitset only.
+They don't implement the from-string or from-ulong/ullong constructors. Index bounds-checking for functions is supported by the third template parameter, 'bool hardened' (false by default).
 The second template parameter on each bitset, 'storage_type', allows the user to specify what type of unsigned integer to use for the internal storage. This can save space for small bitsets with less than 64 bits.
 
 Again, see the project page for more details.

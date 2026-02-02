@@ -3,6 +3,26 @@
 #include "plf_bitset.h"
 
 
+#if defined(_MSC_VER) && !defined(__clang__) && !defined(__GNUC__)
+	#if _MSC_VER >= 1900
+		#define PLF_CPP11_SUPPORT
+	#endif
+
+#elif defined(__cplusplus) && __cplusplus >= 201103L // C++11 support, at least
+	#if defined(__GNUC__) && defined(__GNUC_MINOR__) && !defined(__clang__) // If compiler is GCC/G++
+		#if (__GNUC__ == 4 && __GNUC_MINOR__ >= 7) || __GNUC__ > 4
+			#define PLF_CPP11_SUPPORT
+		#endif
+	#elif defined(__clang__)
+		#if __has_feature(cxx_noexcept)
+			#define PLF_CPP11_SUPPORT
+		#endif
+	#else // Assume support for other compilers
+		#define PLF_CPP11_SUPPORT
+	#endif
+#endif
+
+
 void message(const char *message_text)
 {
 	printf("%s\n", message_text);
@@ -49,9 +69,10 @@ int main()
 
 		total = 0;
 		total2 = 0;
-		std::basic_string<char> values_output1 = values.to_string();
 
-		std::cout << "ostream output: " << values << "  Success.\n";
+		#ifdef PLF_CPP11_SUPPORT
+			std::cout << "ostream output: " << values << "  Success.\n";
+		#endif
 
 		{
 			plf::bitset<10> test;
@@ -166,8 +187,8 @@ int main()
 
  		failpass("Xor test", xor_values.count() == 134 && xor_values == xor_values2);
 
-		std::basic_string<char> values_output = values.to_string();
-		std::basic_string<char> flip_output = flip_values.to_string();
+		std::basic_string<char> values_output = values.to_rstring();
+		std::basic_string<char> flip_output = flip_values.to_rstring();
 
 		for (unsigned int index = 0; index != 134; ++index)
 		{
@@ -181,19 +202,22 @@ int main()
 
 		message("String comparison test passed");
 
-		values_output = values.to_string('x', 'o');
+		#ifdef PLF_CPP11_SUPPORT
+			values_output = values.to_string('x', 'o');
+			flip_output = flip_values.to_string('x', 'o');
 
-		for (unsigned int index = 0; index != 134; ++index)
-		{
-			if ((values_output[index] == 'x') ? 0 : 1 != !(flip_output[index] - 48))
+			for (unsigned int index = 0; index != 134; ++index)
 			{
-				printf("Failed to_string comparison test");
-				getchar();
-				abort();
+				if (values_output[index] == flip_output[index])
+				{
+					printf("Failed to_string comparison test");
+					getchar();
+					abort();
+				}
 			}
-		}
 
-		message("Non-default output string comparison test passed");
+			message("Non-default output string comparison test passed");
+		#endif
 
 
 		failpass("All test", or_values.all() && !values.all() && !flip_values.all() && !and_values.all());
@@ -239,6 +263,69 @@ int main()
 		std::swap(and_values, or_values);
 
 		failpass("Swap test 2", or_values.count() == 132 && and_values.count() == 2);
+	}
+
+	{
+		plf::bitset<500000> values;
+
+		for (unsigned int counter = 0; counter != 40000; ++counter)
+		{
+			const unsigned int index = rand() % 500000;
+			values.set(index);
+			const unsigned int value = values.first_one();
+
+			if (value != index)
+			{
+				std::cout << "Failed at counter " << counter << ", index " << index << ", value " << value << "\n";
+				getchar();
+				abort();
+			}
+
+			values.reset(index);
+		}
+
+		message("first_one series test passed");
+
+		for (unsigned int counter = 0; counter != 40000; ++counter)
+		{
+			const unsigned int index = rand() % 400 + 10, index2 = index + rand() % 400, location = rand() % 810;
+			values.set(index);
+			values.set(index2);
+			const std::size_t value = values.next_one(location);
+
+			if (!((value == index && location <= index) || (value == index2 && location <= index2) || (value == std::numeric_limits<std::size_t>::max() && (location >= index && location >= index2))))
+			{
+				std::cout << "Failed at counter " << counter << ", index " << index << ", index2 " << index2 << ", value " << value << ", location " << location <<"\n";
+				getchar();
+				abort();
+			}
+
+			values.reset(index);
+			values.reset(index2);
+		}
+
+		message("next_one series test passed");
+
+		for (unsigned int counter = 0; counter != 40000; ++counter)
+		{
+			const unsigned int index = rand() % 400 + 100, index2 = index + rand() % 400 + 400, location = rand() % 1010 + index;
+			values.set(index);
+			values.set(index2);
+			const std::size_t value = values.prev_one(location);
+
+			if (!((value == index && location > index) || (value == index2 && location > index2) || (value == std::numeric_limits<std::size_t>::max() && (location <= index && location <= index2))))
+			{
+				std::cout << "Failed at counter " << counter << ", index " << index << ", index2 " << index2 << ", value " << value << ", location " << location <<"\n";
+				getchar();
+				abort();
+			}
+
+			values.reset(index);
+			values.reset(index2);
+		}
+
+		message("prev_one series test passed");
+
 	}
 
 	{
