@@ -3,7 +3,7 @@ plf::bitset implements all the functionality of std::bitset with a few small exc
 
 plf::bitsetb with it's first template parameter, "user_supplied_buffer" set to 'true', is a 'borrowing' bitset, which has it's buffer and size supplied by the user in the constructor, instead of allocating itself. This is useful for treating any particular block of memory you happen to have as a bitset. Most of it's functionality is the same as plf::bitset, though it also has move construction/assignment.
 
-plf::bitsetb with it's first template parameter, "user_supplied_buffer" set to 'false', allocates it's own buffer on the heap and deallocates on destruction, while it's size is supplied by the constructor. This is useful if you have a non-templated class where you want to have differently-sized member bitsets between class instances.
+plf::bitsetb with it's first template parameter, "user_supplied_buffer" set to 'false', allocates it's own buffer on the heap and deallocates on destruction, while it's size is supplied by the constructor. This is useful if you have a non-templated class where you want to have differently-sized member bitsets between class instances, or the size of the bitset isn't known at runtime.
 
 
 As a brief overview of plf::bitset's performance characteristics, versus std::bitset under GCC-libstdc++/MSVC-MSSTL respectively:
