@@ -266,6 +266,45 @@ int main()
 	}
 
 	{
+		const unsigned int bitset_size = 584000;
+		plf::bitset<bitset_size> values;
+
+		for (unsigned int counter = 0; counter != 100000; ++counter)
+		{
+			const unsigned int start = (rand() % (bitset_size - 256)) + 128, end = start + (rand() % ((bitset_size - start) - 256)) + 128;
+			const unsigned int test_range_start = start - (rand() % 128), test_range_end = end + (rand() % 128);
+			values.set_range(start, end);
+			const unsigned int counted_range = values.count_range(test_range_start, test_range_end);
+
+			if (counted_range != end - start)
+			{
+				printf("Count_range bulk test failed, counter = %d, start = %d, end = %d, end - start = %d, count = %d, counted range = %d\n Press Enter to end", counter, start, end, end - start, static_cast<unsigned int>(values.count()), counted_range);
+				getchar();
+				abort();
+			}
+
+			if (values.none_range(test_range_start, test_range_end))
+			{
+				printf("None_range/any_range bulk test failed, counter = %d, start = %d, end = %d, end - start = %d, count = %d, counted range = %d\n Press Enter to end", counter, start, end, end - start, static_cast<unsigned int>(values.count()), counted_range);
+				getchar();
+				abort();
+			}
+
+			if (!values.all_range(start, end))
+			{
+				printf("All_range bulk test failed, counter = %d, start = %d, end = %d, end - start = %d, count = %d, counted range = %d\n Press Enter to end", counter, start, end, end - start, static_cast<unsigned int>(values.count()), counted_range);
+				getchar();
+				abort();
+			}
+
+			values.reset();
+		}
+
+		message("Bulk count_range/all_range/any_range/none_range tests passed");
+	}
+
+
+	{
 		plf::bitset<500000> values;
 
 		for (unsigned int counter = 0; counter != 40000; ++counter)
