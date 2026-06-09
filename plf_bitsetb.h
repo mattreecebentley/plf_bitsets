@@ -157,16 +157,155 @@ namespace plf
 #ifndef PLF_BITSET_TOOLS
 	#define PLF_BITSET_TOOLS
 
+	// popcount which works in pre-c++20
+
 	template <typename storage_type>
-	static PLF_CONSTFUNC storage_type popcount(storage_type value)
+	static PLF_CONSTFUNC std::size_t popcount(storage_type value)
 	{
 		#ifdef PLF_CPP20_SUPPORT
 			return std::popcount(value); // leverage CPU intrinsics for faster performance
 		#else
-			size_type total = 0;
+			std::size_t total = 0;
 			for (; value; ++total) value &= value - 1; // Kernighan's algorithm
 			return total;
 		#endif
+	}
+
+
+
+	// These countr/countl implementations work in pre-C++20 modes, but also skip zero-checks in >= C++20 if the architecture was going to end up using BSR instead of some other instruction set.
+	// Hence if you use them, you must make sure value != 0 (for countr_one/countl_one, value != std::numeric_limits<storage_type>::max()). These implementations do not work with types > unsigned long long.
+
+	template<typename storage_type>
+	static PLF_CONSTFUNC std::size_t countr_zero(const storage_type value)
+	{
+		#ifdef PLF_CPP20_SUPPORT
+			[[assume(value != 0)]];
+		#endif
+
+		#ifdef PLF_CONSTEVAL_SUPPORT
+			if consteval { return std::countr_zero(value); }// Use std:: library's constexpr-friendly version instead
+		#endif
+
+		#if defined(_MSC_VER) // Matches MSVC and clang under MSVC
+			#if !defined(PLF_CPP20_SUPPORT) || (!defined(__AVX2__) && !defined(_M_CEE_PURE) && ((defined(_M_IX86) && !defined(_M_HYBRID_X86_ARM64)) || (defined(_M_X64) && !defined(_M_ARM64EC))))
+				unsigned long result;
+
+				if PLF_CONSTEXPR (sizeof(storage_type) <= 4)
+				{
+					_BitScanForward(&result, static_cast<unsigned int>(~static_cast<storage_type>(-1) | value));
+				}
+				else
+				{
+					_BitScanForward64(&result, value);
+				}
+
+				return static_cast<std::size_t>(result);
+			#endif
+		#elif (defined(__GNUC__) || defined(__clang__)) && (!defined(PLF_CPP20_SUPPORT) || ((defined(__GLIBCXX__) && !_GLIBCXX_USE_BUILTIN_TRAIT(__builtin_ctzg)) || (defined(__clang__) && (defined(__GLIBCXX__) || !__has_builtin(__builtin_ctzg)))))
+			if PLF_CONSTEXPR (sizeof(storage_type) <= sizeof(unsigned))
+			{
+				return static_cast<std::size_t>(__builtin_ctz(value));
+			}
+			else if PLF_CONSTEXPR (sizeof(storage_type) <= sizeof(unsigned long))
+			{
+				return static_cast<std::size_t>(__builtin_ctzl(value));
+			}
+			#ifdef PLF_CPP11_SUPPORT
+				else if PLF_CONSTEXPR (sizeof(storage_type) <= sizeof(unsigned long long))
+			#else
+				else if PLF_CONSTEXPR (sizeof(storage_type) <= sizeof(std::size_t) && sizeof(std::size_t) >= 8)
+			#endif
+			{
+				return static_cast<std::size_t>(__builtin_ctzll(value));
+			}
+		#endif
+
+		#ifdef PLF_CPP20_SUPPORT
+			return std::countr_zero(value);
+		#else
+			for (storage_type bit_index = 0; ; ++bit_index)
+			{
+				if (value & (storage_type(1) << bit_index)) return static_cast<std::size_t>(bit_index);
+			}
+		#endif
+	}
+
+
+
+	template<typename storage_type>
+	static PLF_CONSTFUNC std::size_t countr_one(const storage_type value)
+	{
+		return plf::countr_zero(~value);
+	}
+
+
+
+
+	template<typename storage_type>
+	static PLF_CONSTFUNC std::size_t countl_zero(const storage_type value)
+	{
+		#ifdef PLF_CPP20_SUPPORT
+			[[assume(value != 0)]];
+		#endif
+
+		#ifdef PLF_CONSTEVAL_SUPPORT
+			if consteval { return std::countl_zero(value); }
+		#endif
+
+		#ifdef _MSC_VER
+			#if !defined(PLF_CPP20_SUPPORT) || (!defined(__AVX2__) && !defined(_M_CEE_PURE) && ((defined(_M_IX86) && !defined(_M_HYBRID_X86_ARM64)) || (defined(_M_X64) && !defined(_M_ARM64EC))))
+				unsigned long result;
+
+				if PLF_CONSTEXPR (sizeof(storage_type) <= 4)
+				{
+					_BitScanReverse(&result, value);
+				}
+				else
+				{
+					_BitScanReverse64(&result, value);
+				}
+
+				return static_cast<std::size_t>(PLF_TYPE_BITWIDTH - 1 - result);
+			#endif
+		#elif (defined(__GNUC__) || defined(__clang__)) && (!defined(PLF_CPP20_SUPPORT) || ((defined(__GLIBCXX__) && !_GLIBCXX_USE_BUILTIN_TRAIT(__builtin_ctzg)) || (defined(__clang__) && (defined(__GLIBCXX__) || !__has_builtin(__builtin_ctzg)))))
+			if PLF_CONSTEXPR (sizeof(storage_type) <= sizeof(unsigned))
+			{
+				return static_cast<std::size_t>(__builtin_clz(value) - (sizeof(unsigned) - sizeof(storage_type)));
+			}
+			else if PLF_CONSTEXPR (sizeof(storage_type) <= sizeof(unsigned long))
+			{
+				return static_cast<std::size_t>(__builtin_clzl(value) - (sizeof(unsigned long) - sizeof(storage_type)));
+			}
+			#ifdef PLF_CPP11_SUPPORT
+				else if PLF_CONSTEXPR (sizeof(storage_type) <= sizeof(unsigned long long))
+				{
+					return static_cast<std::size_t>(__builtin_clzll(value) - (sizeof(unsigned long long) - sizeof(storage_type)));
+				}
+			#else
+				else if PLF_CONSTEXPR (sizeof(storage_type) <= sizeof(std::size_t) && sizeof(std::size_t) >= 8)
+				{
+					return static_cast<std::size_t>(__builtin_clzll(value) - (sizeof(std::size_t) - sizeof(storage_type)));
+				}
+			#endif
+		#endif
+
+		#ifdef PLF_CPP20_SUPPORT
+			return std::countl_zero(value);
+		#else
+			for (storage_type bit_index = PLF_TYPE_BITWIDTH - 1; ; --bit_index)
+			{
+				if (value & (storage_type(1) << bit_index)) return (PLF_TYPE_BITWIDTH - 1) - bit_index;
+			}
+		#endif
+	}
+
+
+
+	template<typename storage_type>
+	static PLF_CONSTFUNC std::size_t countl_one(const storage_type value)
+	{
+		return plf::countl_zero(~value);
 	}
 
 #endif
@@ -186,7 +325,16 @@ private:
 
 	PLF_CONSTFUNC void set_overflow_to_one() PLF_NOEXCEPT
 	{ // set all bits > size to 1
+		#if defined(__GNUC__) || defined(__clang__) // work around inaccurate warning in GCC 15.2, also clang
+			#pragma GCC diagnostic push
+			#pragma GCC diagnostic ignored "-Wshift-count-overflow"
+		#endif
+
 		buffer[PLF_ARRAY_CAPACITY - 1] |= std::numeric_limits<storage_type>::max() << (PLF_TYPE_BITWIDTH - (PLF_ARRAY_CAPACITY_BITS - total_size));
+
+		#if defined(__GNUC__) || defined(__clang__)
+			#pragma GCC diagnostic pop
+		#endif
 	}
 
 
@@ -665,17 +813,7 @@ private:
 
 		do
 		{
-			if (buffer[word_index] != 0)
-			{
-				#ifdef PLF_CPP20_SUPPORT
-					return (word_index * PLF_TYPE_BITWIDTH) + std::countr_zero(buffer[word_index]);
-				#else
-					for (storage_type bit_index = 0, value = buffer[word_index]; ; ++bit_index)
-					{
-						if (value & (storage_type(1) << bit_index)) return (word_index * PLF_TYPE_BITWIDTH) + bit_index;
-					}
-				#endif
-			}
+			if (buffer[word_index] != 0) return (word_index * PLF_TYPE_BITWIDTH) + plf::countr_zero(buffer[word_index]);
 		} while (++word_index != end);
 
 		return std::numeric_limits<size_type>::max();
@@ -687,17 +825,7 @@ private:
 	{
 		do
 		{
-			if (buffer[word_index] != 0)
-			{
-				#ifdef PLF_CPP20_SUPPORT
-					return (((word_index + 1) * PLF_TYPE_BITWIDTH) - std::countl_zero(buffer[word_index])) - 1;
-				#else
-					for (storage_type bit_index = PLF_TYPE_BITWIDTH - 1, value = buffer[word_index]; ; --bit_index)
-					{
-						if (value & (storage_type(1) << bit_index)) return (word_index * PLF_TYPE_BITWIDTH) + bit_index;
-					}
-				#endif
-			}
+			if (buffer[word_index] != 0) return (((word_index + 1) * PLF_TYPE_BITWIDTH) - plf::countl_zero(buffer[word_index])) - 1;
 		} while (word_index-- != 0);
 
 		return std::numeric_limits<size_type>::max();
@@ -708,59 +836,38 @@ private:
 	PLF_CONSTFUNC size_type search_zero_forwards(size_type word_index) PLF_NOEXCEPT
 	{
 		const size_type end = PLF_ARRAY_CAPACITY;
+		size_type index = std::numeric_limits<size_type>::max();
 
 		do
 		{
 			if (buffer[word_index] != std::numeric_limits<storage_type>::max())
 			{
-				#ifdef PLF_CPP20_SUPPORT
-					const size_type index = (word_index * PLF_TYPE_BITWIDTH) + std::countr_one(buffer[word_index]);
-					set_overflow_to_zero();
-					return index;
-				#else
-					for (storage_type bit_index = 0, value = buffer[word_index]; ; ++bit_index)
-					{
-						if (!(value & (storage_type(1) << bit_index)))
-						{
-							set_overflow_to_zero();
-							return (word_index * PLF_TYPE_BITWIDTH) + bit_index;
-						}
-					}
-				#endif
+				index = (word_index * PLF_TYPE_BITWIDTH) + plf::countr_one(buffer[word_index]);
+				break;
 			}
 		} while (++word_index != end);
 
 		set_overflow_to_zero();
-		return std::numeric_limits<size_type>::max();
+		return index;
 	}
 
 
 
 	PLF_CONSTFUNC size_type search_zero_backwards(size_type word_index) PLF_NOEXCEPT
 	{
+		size_type index = std::numeric_limits<size_type>::max();
+
 		do
 		{
 			if (buffer[word_index] != std::numeric_limits<storage_type>::max())
 			{
-				#ifdef PLF_CPP20_SUPPORT
-					const size_type index = (((word_index + 1) * PLF_TYPE_BITWIDTH) - std::countl_one(buffer[word_index])) - 1;
-					set_overflow_to_zero();
-					return index;
-				#else
-					for (storage_type bit_index = PLF_TYPE_BITWIDTH - 1, value = buffer[word_index]; ; --bit_index)
-					{
-						if (!(value & (storage_type(1) << bit_index)))
-						{
-							set_overflow_to_zero();
-							return (word_index * PLF_TYPE_BITWIDTH) + bit_index;
-						}
-					}
-				#endif
+				index = (((word_index + 1) * PLF_TYPE_BITWIDTH) - plf::countl_one(buffer[word_index])) - 1;
+				break;
 			}
 		} while (word_index-- != 0);
 
 		set_overflow_to_zero();
-		return std::numeric_limits<size_type>::max();
+		return index;
 	}
 
 
@@ -780,21 +887,10 @@ public:
 
 		// Search within current buffer word:
 		size_type word_index = index / PLF_TYPE_BITWIDTH;
-		index = (index % PLF_TYPE_BITWIDTH);
+		index %= PLF_TYPE_BITWIDTH;
 		const storage_type current_word = buffer[word_index] >> index;
 
-		if (current_word != 0)
-		{
-			#ifdef PLF_CPP20_SUPPORT
-				return (word_index * PLF_TYPE_BITWIDTH) + std::countr_zero(current_word) + index;
-			#else
-				for (storage_type bit_index = 0; ; ++bit_index)
-				{
-					if (current_word & (storage_type(1) << bit_index)) return (word_index * PLF_TYPE_BITWIDTH) + bit_index + index;
-				}
-			#endif
-		}
-
+		if (current_word != 0) return (word_index * PLF_TYPE_BITWIDTH) + plf::countr_zero(current_word) + index;
 		if (++word_index == PLF_ARRAY_CAPACITY) return std::numeric_limits<storage_type>::max();
 		return search_one_forwards(word_index);
 	}
@@ -817,18 +913,7 @@ public:
 
 		const storage_type current_word = buffer[word_index] << ((PLF_TYPE_BITWIDTH - 1) - index);
 
-		if (current_word != 0)
-		{
-			#ifdef PLF_CPP20_SUPPORT
-				return ((word_index * PLF_TYPE_BITWIDTH) + index) - std::countl_zero(current_word);
-			#else
-				for (storage_type bit_index = PLF_TYPE_BITWIDTH - 1; ; --bit_index)
-				{
-					if (current_word & (storage_type(1) << bit_index)) return (word_index * PLF_TYPE_BITWIDTH) + bit_index - (PLF_TYPE_BITWIDTH - index);
-				}
-			#endif
-		}
-
+		if (current_word != 0) return ((word_index * PLF_TYPE_BITWIDTH) + index) - plf::countl_zero(current_word);
 		if (word_index == 0) return std::numeric_limits<storage_type>::max();
 		return search_one_backwards(word_index - 1);
 	}
@@ -850,20 +935,12 @@ public:
 
 		// Search within current buffer word:
 		size_type word_index = index / PLF_TYPE_BITWIDTH;
-		index = (index % PLF_TYPE_BITWIDTH);
+		index %= PLF_TYPE_BITWIDTH;
 		const storage_type current_word = buffer[word_index] | ~(std::numeric_limits<storage_type>::max() << index); // Set leading bits up-to-and-including the supplied index to 1
 
 		if (current_word != std::numeric_limits<storage_type>::max())
 		{
-			#ifdef PLF_CPP20_SUPPORT
-				index = (word_index * PLF_TYPE_BITWIDTH) + std::countr_one(current_word);
-			#else
-				for (storage_type bit_index = 0; ; ++bit_index)
-				{
-					if (!(current_word & (storage_type(1) << bit_index))) index = (word_index * PLF_TYPE_BITWIDTH) + bit_index;
-				}
-			#endif
-
+			index = (word_index * PLF_TYPE_BITWIDTH) + plf::countr_one(current_word);
 			set_overflow_to_zero();
 			return index;
 		}
@@ -894,15 +971,7 @@ public:
 
 		if (current_word != std::numeric_limits<storage_type>::max())
 		{
-			#ifdef PLF_CPP20_SUPPORT
-				index = (((word_index + 1) * PLF_TYPE_BITWIDTH) - std::countl_one(current_word)) - 1;
-			#else
-				for (storage_type bit_index = PLF_TYPE_BITWIDTH - 1; ; --bit_index)
-				{
-					if (!(current_word & (storage_type(1) << bit_index))) index = (word_index * PLF_TYPE_BITWIDTH) + bit_index;
-				}
-			#endif
-
+			index = (((word_index + 1) * PLF_TYPE_BITWIDTH) - plf::countl_one(current_word)) - 1;
 			set_overflow_to_zero();
 			return index;
 		}
@@ -958,6 +1027,13 @@ public:
 	PLF_CONSTFUNC size_type size() const PLF_NOEXCEPT
  	{
  		return total_size;
+ 	}
+
+
+
+	PLF_CONSTFUNC size_type memory() const PLF_NOEXCEPT
+ 	{
+		 return sizeof(*this) + PLF_ARRAY_CAPACITY_BYTES;
  	}
 
 
