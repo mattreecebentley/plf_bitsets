@@ -293,19 +293,13 @@ private:
 	{ // If total_size < array bit capacity, set all bits > size to 1
 		#ifdef PLF_CPP20_SUPPORT
 			if constexpr (total_size % PLF_TYPE_BITWIDTH != 0)
+			{
+				buffer[PLF_ARRAY_CAPACITY - 1] |= std::numeric_limits<storage_type>::max() << (PLF_TYPE_BITWIDTH - (PLF_ARRAY_CAPACITY_BITS - total_size));
+			}
+		#else // Can't remove the code if total_size % PLF_TYPE_BITWIDTH == 0, so avoid the branch instead:
+			const storage_type shift = PLF_ARRAY_CAPACITY_BITS - total_size;
+			buffer[PLF_ARRAY_CAPACITY - 1] |= std::numeric_limits<storage_type>::max() << ((PLF_TYPE_BITWIDTH * (shift != 0)) - shift);
 		#endif
-		{
-			#if defined(__GNUC__) || defined(__clang__) // work around inaccurate warning in GCC 15.2, also clang
-				#pragma GCC diagnostic push
-				#pragma GCC diagnostic ignored "-Wshift-count-overflow"
-			#endif
-
-			buffer[PLF_ARRAY_CAPACITY - 1] |= std::numeric_limits<storage_type>::max() << (PLF_TYPE_BITWIDTH - (PLF_ARRAY_CAPACITY_BITS - total_size));
-
-			#if defined(__GNUC__) || defined(__clang__)
-				#pragma GCC diagnostic pop
-			#endif
-		}
 	}
 
 
