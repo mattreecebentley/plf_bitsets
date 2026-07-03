@@ -154,22 +154,24 @@ namespace plf
 			if consteval { return std::countr_zero(value); } // Use whatever the library's constexpr-friendly version is
 		#endif
 
-		#if defined(_MSC_VER) // Matches MSVC and clang under MSVC
-			#if !defined(PLF_CPP20_SUPPORT) || (!defined(__AVX2__) && !defined(_M_CEE_PURE) && ((defined(_M_IX86) && !defined(_M_HYBRID_X86_ARM64)) || (defined(_M_X64) && !defined(_M_ARM64EC))))
-				unsigned long result;
+		#if defined(_MSC_VER) && (!defined(PLF_CPP20_SUPPORT) || (!defined(__AVX2__) && !defined(_M_CEE_PURE) && ((defined(_M_IX86) && !defined(_M_HYBRID_X86_ARM64)) || (defined(_M_X64) && !defined(_M_ARM64EC))))) // Matches MSVC and clang under MSVC
+			unsigned long result;
 
+			#if defined(_M_X64) && _MSC_VER >= 1900 // support for _BitScanForward64
 				if PLF_CONSTEXPR (sizeof(storage_type) <= 4)
-				{
+				{ // Note: the ~ appears to invert the ::max() value here (ie. interpreting -1 as an unsigned type), but actually, since the type may be a smaller number of bits than unsigned int, this is potentially only the inversion of the lower bits.
 					_BitScanForward(&result, static_cast<unsigned int>(~static_cast<storage_type>(-1) | value));
 				}
 				else
 				{
 					_BitScanForward64(&result, value);
 				}
-
-				return static_cast<std::size_t>(result);
+			#else
+				_BitScanForward(&result, static_cast<unsigned int>(~static_cast<storage_type>(-1) | value));
 			#endif
-		#elif (defined(__GNUC__) || defined(__clang__)) && (!defined(PLF_CPP20_SUPPORT) || ((defined(__GLIBCXX__) && !_GLIBCXX_USE_BUILTIN_TRAIT(__builtin_ctzg)) || (defined(__clang__) && (defined(__GLIBCXX__) || !__has_builtin(__builtin_ctzg)))))
+
+			return static_cast<std::size_t>(result);
+		#elif ((defined(__GNUC__) && __GNUC__ >= 4) || defined(__clang__)) && !defined(PLF_CPP20_SUPPORT)
 			if PLF_CONSTEXPR (sizeof(storage_type) <= sizeof(unsigned))
 			{
 				return static_cast<std::size_t>(__builtin_ctz(value));
@@ -220,10 +222,10 @@ namespace plf
 			if consteval { return std::countl_zero(value); }
 		#endif
 
-		#ifdef _MSC_VER
-			#if !defined(PLF_CPP20_SUPPORT) || (!defined(__AVX2__) && !defined(_M_CEE_PURE) && ((defined(_M_IX86) && !defined(_M_HYBRID_X86_ARM64)) || (defined(_M_X64) && !defined(_M_ARM64EC))))
-				unsigned long result;
+		#if defined(_MSC_VER) && (!defined(PLF_CPP20_SUPPORT) || (!defined(__AVX2__) && !defined(_M_CEE_PURE) && ((defined(_M_IX86) && !defined(_M_HYBRID_X86_ARM64)) || (defined(_M_X64) && !defined(_M_ARM64EC)))))
+			unsigned long result;
 
+			#if defined(_M_X64) && _MSC_VER >= 1900
 				if PLF_CONSTEXPR (sizeof(storage_type) <= 4)
 				{
 					_BitScanReverse(&result, value);
@@ -232,10 +234,12 @@ namespace plf
 				{
 					_BitScanReverse64(&result, value);
 				}
-
-				return static_cast<std::size_t>(PLF_TYPE_BITWIDTH - 1 - result);
+			#else
+				_BitScanReverse(&result, value);
 			#endif
-		#elif (defined(__GNUC__) || defined(__clang__)) && (!defined(PLF_CPP20_SUPPORT) || ((defined(__GLIBCXX__) && !_GLIBCXX_USE_BUILTIN_TRAIT(__builtin_ctzg)) || (defined(__clang__) && (defined(__GLIBCXX__) || !__has_builtin(__builtin_ctzg)))))
+
+			return static_cast<std::size_t>(PLF_TYPE_BITWIDTH - 1 - result);
+		#elif ((defined(__GNUC__) && __GNUC__ >= 4) || defined(__clang__)) && !defined(PLF_CPP20_SUPPORT)
 			if PLF_CONSTEXPR (sizeof(storage_type) <= sizeof(unsigned))
 			{
 				return static_cast<std::size_t>(__builtin_clz(value) - (sizeof(unsigned) - sizeof(storage_type)));
@@ -1044,7 +1048,7 @@ public:
 
 				if ((shift_amount %= PLF_TYPE_BITWIDTH) != 0)
 				{
-					const storage_type shifter = PLF_TYPE_BITWIDTH - shift_amount;
+					const storage_type shifter = static_cast<storage_type>(PLF_TYPE_BITWIDTH - shift_amount);
 
 					for (; current_source != end; ++current, ++current_source)
 					{
@@ -1077,7 +1081,7 @@ public:
 		}
 		else if (shift_amount != 0)
 		{
-			const storage_type shifter = PLF_TYPE_BITWIDTH - shift_amount;
+			const storage_type shifter = static_cast<storage_type>(PLF_TYPE_BITWIDTH - shift_amount);
 
 			for (size_type current = 0; current != end; ++current)
 			{
@@ -1207,7 +1211,7 @@ public:
 
 			if ((shift_amount %= PLF_TYPE_BITWIDTH) != 0)
 			{
-				const storage_type shifter = PLF_TYPE_BITWIDTH - shift_amount;
+				const storage_type shifter = static_cast<storage_type>(PLF_TYPE_BITWIDTH - shift_amount);
 
 				while (--current_source != 0)
 				{
@@ -1302,7 +1306,7 @@ public:
 	#else
 		PLF_CONSTFUNC std::basic_string<char> to_rstring(const char zero = char('0'), char one = char('1')) const
 		{
-			std::basic_string<char, std::char_traits<char>, std::allocator<char> > temp(total_size, zero);
+			std::basic_string<char> temp(total_size, zero);
 	#endif
 		one -= zero;
 
