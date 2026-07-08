@@ -330,7 +330,7 @@ int main()
 
 		for (unsigned int index = 0; index != 134; ++index)
 		{
-			const unsigned int num = rand() & 1;
+			const bool num = static_cast<bool>(rand() & 1);
 			values.set(index, num);
 			total += num;
 		}

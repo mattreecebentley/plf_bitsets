@@ -22,78 +22,13 @@
 #define PLF_BITSET_H
 
 
-// Compiler-specific defines:
-
- // defaults before potential redefinitions:
-#define PLF_NOEXCEPT throw()
-#define PLF_EXCEPTIONS_SUPPORT
-#define PLF_CONSTEXPR
-#define PLF_CONSTFUNC
-
-
-#if ((defined(__clang__) || defined(__GNUC__)) && !defined(__EXCEPTIONS)) || (defined(_MSC_VER) && !defined(_CPPUNWIND))
-	#undef PLF_EXCEPTIONS_SUPPORT
-	#include <exception> // std::terminate
+#ifndef PLF_COMPILER_DEFINES
+	#define PLF_BITSET_DEFINES // ie. No encapsulating unit/class has previously defined the compiler feature macros in plf_tools.h below, so allow this header to undefine them at it's end.
 #endif
 
-
-#if defined(_MSC_VER) && !defined(__clang__) && !defined(__GNUC__)
-	#if _MSC_VER >= 1900
-		#undef PLF_NOEXCEPT
-		#define PLF_NOEXCEPT noexcept
-		#define PLF_CPP11_SUPPORT
-	#endif
-
-	#if defined(_MSVC_LANG) && (_MSVC_LANG >= 201703L)
-		#undef PLF_CONSTEXPR
-		#define PLF_CONSTEXPR constexpr
-	#endif
-
-	#if defined(_MSVC_LANG) && (_MSVC_LANG >= 202002L) && _MSC_VER >= 1929
-		#undef PLF_CONSTFUNC
-		#define PLF_CONSTFUNC constexpr
-		#define PLF_CPP20_SUPPORT
-	#endif
-
-	#if defined(_MSVC_LANG) && (_MSVC_LANG >= 202302L) && _MSC_VER >= 1944
-		#define PLF_CONSTEVAL_SUPPORT
-	#endif
-
-#elif defined(__cplusplus) && __cplusplus >= 201103L // C++11 support, at least
-	#if defined(__GNUC__) && defined(__GNUC_MINOR__) && !defined(__clang__) // If compiler is GCC/G++
-		#if (__GNUC__ == 4 && __GNUC_MINOR__ >= 6) || __GNUC__ > 4
-			#undef PLF_NOEXCEPT
-			#define PLF_NOEXCEPT noexcept
-			#define PLF_CPP11_SUPPORT
-		#endif
-	#elif defined(__clang__)
-		#if __has_feature(cxx_noexcept)
-			#undef PLF_NOEXCEPT
-			#define PLF_NOEXCEPT noexcept
-			#define PLF_CPP11_SUPPORT
-		#endif
-	#else // Assume support for other compilers
-		#undef PLF_NOEXCEPT
-		#define PLF_NOEXCEPT noexcept
-		#define PLF_CPP11_SUPPORT
-	#endif
-
-	#if __cplusplus >= 201703L && ((defined(__clang__) && ((__clang_major__ == 3 && __clang_minor__ == 9) || __clang_major__ > 3)) || (defined(__GNUC__) && __GNUC__ >= 7) || (!defined(__clang__) && !defined(__GNUC__))) // assume correct C++17 implementation for non-gcc/clang compilers
-		#undef PLF_CONSTEXPR
-		#define PLF_CONSTEXPR constexpr
-	#endif
-
-	// The following line is a little different from other plf:: containers because we need constexpr basic_string in order to make the to_string function constexpr:
-	#if __cplusplus >= 202001L && ((((defined(__clang__) && __clang_major__ >= 15) || (defined(__GNUC__) && (__GNUC__ >= 12))) && ((defined(_LIBCPP_VERSION) && _LIBCPP_VERSION >= 15) || (defined(__GLIBCXX__) &&	_GLIBCXX_RELEASE >= 12))) || (!defined(__clang__) && !defined(__GNUC__)))
-		#undef PLF_CONSTFUNC
-		#define PLF_CONSTFUNC constexpr
-		#define PLF_CPP20_SUPPORT
-	#endif
-
-	#if __cplusplus >= 202302L && ((defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && (__GNUC__ >= 12)))
-		#define PLF_CONSTEVAL_SUPPORT
-	#endif
-#endif
+#define PLF_INCLUDE_BIT_TOOLS
+#define PLF_INCLUDE_TOOLS
+#include "plf_tools.h"
 
 
 #define PLF_TYPE_BITWIDTH (sizeof(storage_type) * 8)
@@ -119,168 +54,6 @@
 
 namespace plf
 {
-
-
-#ifndef PLF_BITSET_TOOLS
-	#define PLF_BITSET_TOOLS
-
-	// popcount which works pre-c++20
-
-	template <typename storage_type>
-	static PLF_CONSTFUNC std::size_t popcount(storage_type value)
-	{
-		#ifdef PLF_CPP20_SUPPORT
-			return std::popcount(value); // leverage CPU intrinsics for faster performance
-		#else
-			std::size_t total = 0;
-			for (; value; ++total) value &= value - 1; // Kernighan's algorithm
-			return total;
-		#endif
-	}
-
-
-
-	// These countr/countl implementations work in pre-C++20 modes, but also skip zero-checks in >= C++20 if the architecture was going to end up using BSR instead of some other instruction set.
-	// Hence if you use them, you must make sure value != 0 (for countr_one/countl_one, value != std::numeric_limits<storage_type>::max()). These implementations do not work with types > unsigned long long.
-
-	template<typename storage_type>
-	static PLF_CONSTFUNC std::size_t countr_zero(const storage_type value)
-	{
-		#ifdef PLF_CPP20_SUPPORT
-			[[assume(value != 0)]];
-		#endif
-
-		#ifdef PLF_CONSTEVAL_SUPPORT
-			if consteval { return std::countr_zero(value); } // Use whatever the library's constexpr-friendly version is
-		#endif
-
-		#if defined(_MSC_VER) && (!defined(PLF_CPP20_SUPPORT) || (!defined(__AVX2__) && !defined(_M_CEE_PURE) && ((defined(_M_IX86) && !defined(_M_HYBRID_X86_ARM64)) || (defined(_M_X64) && !defined(_M_ARM64EC))))) // Matches MSVC and clang under MSVC
-			unsigned long result;
-
-			#if defined(_M_X64) && _MSC_VER >= 1900 // support for _BitScanForward64
-				if PLF_CONSTEXPR (sizeof(storage_type) <= 4)
-				{ // Note: the ~ appears to invert the ::max() value here (ie. interpreting -1 as an unsigned type), but actually, since the type may be a smaller number of bits than unsigned int, this is potentially only the inversion of the lower bits.
-					_BitScanForward(&result, static_cast<unsigned int>(~static_cast<storage_type>(-1) | value));
-				}
-				else
-				{
-					_BitScanForward64(&result, value);
-				}
-			#else
-				_BitScanForward(&result, static_cast<unsigned int>(~static_cast<storage_type>(-1) | value));
-			#endif
-
-			return static_cast<std::size_t>(result);
-		#elif ((defined(__GNUC__) && __GNUC__ >= 4) || defined(__clang__)) && !defined(PLF_CPP20_SUPPORT)
-			if PLF_CONSTEXPR (sizeof(storage_type) <= sizeof(unsigned))
-			{
-				return static_cast<std::size_t>(__builtin_ctz(value));
-			}
-			else if PLF_CONSTEXPR (sizeof(storage_type) <= sizeof(unsigned long))
-			{
-				return static_cast<std::size_t>(__builtin_ctzl(value));
-			}
-			#ifdef PLF_CPP11_SUPPORT
-				else if PLF_CONSTEXPR (sizeof(storage_type) <= sizeof(unsigned long long))
-			#else
-				else if PLF_CONSTEXPR (sizeof(storage_type) <= sizeof(std::size_t) && sizeof(std::size_t) >= 8)
-			#endif
-			{
-				return static_cast<std::size_t>(__builtin_ctzll(value));
-			}
-		#endif
-
-		#ifdef PLF_CPP20_SUPPORT
-			return std::countr_zero(value);
-		#else
-			for (storage_type bit_index = 0; ; ++bit_index)
-			{
-				if (value & (storage_type(1) << bit_index)) return static_cast<std::size_t>(bit_index);
-			}
-		#endif
-	}
-
-
-
-	template<typename storage_type>
-	static PLF_CONSTFUNC std::size_t countr_one(const storage_type value)
-	{
-		return plf::countr_zero(~value);
-	}
-
-
-
-
-	template<typename storage_type>
-	static PLF_CONSTFUNC std::size_t countl_zero(const storage_type value)
-	{
-		#ifdef PLF_CPP20_SUPPORT
-			[[assume(value != 0)]];
-		#endif
-
-		#ifdef PLF_CONSTEVAL_SUPPORT
-			if consteval { return std::countl_zero(value); }
-		#endif
-
-		#if defined(_MSC_VER) && (!defined(PLF_CPP20_SUPPORT) || (!defined(__AVX2__) && !defined(_M_CEE_PURE) && ((defined(_M_IX86) && !defined(_M_HYBRID_X86_ARM64)) || (defined(_M_X64) && !defined(_M_ARM64EC)))))
-			unsigned long result;
-
-			#if defined(_M_X64) && _MSC_VER >= 1900
-				if PLF_CONSTEXPR (sizeof(storage_type) <= 4)
-				{
-					_BitScanReverse(&result, value);
-				}
-				else
-				{
-					_BitScanReverse64(&result, value);
-				}
-			#else
-				_BitScanReverse(&result, value);
-			#endif
-
-			return static_cast<std::size_t>(PLF_TYPE_BITWIDTH - 1 - result);
-		#elif ((defined(__GNUC__) && __GNUC__ >= 4) || defined(__clang__)) && !defined(PLF_CPP20_SUPPORT)
-			if PLF_CONSTEXPR (sizeof(storage_type) <= sizeof(unsigned))
-			{
-				return static_cast<std::size_t>(__builtin_clz(value) - (sizeof(unsigned) - sizeof(storage_type)));
-			}
-			else if PLF_CONSTEXPR (sizeof(storage_type) <= sizeof(unsigned long))
-			{
-				return static_cast<std::size_t>(__builtin_clzl(value) - (sizeof(unsigned long) - sizeof(storage_type)));
-			}
-			#ifdef PLF_CPP11_SUPPORT
-				else if PLF_CONSTEXPR (sizeof(storage_type) <= sizeof(unsigned long long))
-				{
-					return static_cast<std::size_t>(__builtin_clzll(value) - (sizeof(unsigned long long) - sizeof(storage_type)));
-				}
-			#else
-				else if PLF_CONSTEXPR (sizeof(storage_type) <= sizeof(std::size_t) && sizeof(std::size_t) >= 8)
-				{
-					return static_cast<std::size_t>(__builtin_clzll(value) - (sizeof(std::size_t) - sizeof(storage_type)));
-				}
-			#endif
-		#endif
-
-		#ifdef PLF_CPP20_SUPPORT
-			return std::countl_zero(value);
-		#else
-			for (storage_type bit_index = PLF_TYPE_BITWIDTH - 1; ; --bit_index)
-			{
-				if (value & (storage_type(1) << bit_index)) return (PLF_TYPE_BITWIDTH - 1) - bit_index;
-			}
-		#endif
-	}
-
-
-
-	template<typename storage_type>
-	static PLF_CONSTFUNC std::size_t countl_one(const storage_type value)
-	{
-		return plf::countl_zero(~value);
-	}
-
-#endif
-
 
 
 template<std::size_t total_size, typename storage_type = std::size_t, bool hardened = false>
@@ -378,7 +151,7 @@ public:
 			else
 		#endif
 		{
-			std::memset(static_cast<void *>(buffer), std::numeric_limits<unsigned char>::max(), PLF_ARRAY_CAPACITY_BYTES);
+			std::memset(plf::void_cast(buffer), std::numeric_limits<unsigned char>::max(), PLF_ARRAY_CAPACITY_BYTES);
 		}
 
 		set_overflow_to_zero();
@@ -436,7 +209,7 @@ public:
 				else
 			#endif
 			{
-				std::memset(static_cast<void *>(buffer + begin_type_index + 1), std::numeric_limits<unsigned char>::max(), ((end_type_index - 1) - begin_type_index) * sizeof(storage_type));
+				std::memset(plf::void_cast(buffer + begin_type_index + 1), std::numeric_limits<unsigned char>::max(), ((end_type_index - 1) - begin_type_index) * sizeof(storage_type));
 			}
 
 			// Write last storage_type:
@@ -474,7 +247,7 @@ public:
 			else
 		#endif
 		{
-			std::memset(static_cast<void *>(buffer), 0, PLF_ARRAY_CAPACITY_BYTES);
+			std::memset(plf::void_cast(buffer), 0, PLF_ARRAY_CAPACITY_BYTES);
 		}
 	}
 
@@ -519,7 +292,7 @@ public:
 				else
 			#endif
 			{
-				std::memset(static_cast<void *>(buffer + begin_type_index + 1), 0, ((end_type_index - 1) - begin_type_index) * sizeof(storage_type));
+				std::memset(plf::void_cast(buffer + begin_type_index + 1), 0, ((end_type_index - 1) - begin_type_index) * sizeof(storage_type));
 			}
 
 			buffer[end_type_index] &= ~(std::numeric_limits<storage_type>::max() >> distance_to_end_storage);
@@ -1076,7 +849,7 @@ public:
 				else
 			#endif
 			{
-				std::memset(static_cast<void *>(buffer + current), 0, (PLF_ARRAY_CAPACITY - current) * sizeof(storage_type));
+				std::memset(plf::void_cast(buffer + current), 0, (PLF_ARRAY_CAPACITY - current) * sizeof(storage_type));
 			}
 		}
 		else if (shift_amount != 0)
@@ -1154,7 +927,7 @@ public:
 				else
 			#endif
 			{
-				std::memset(static_cast<void *>(buffer + current), 0, (PLF_ARRAY_CAPACITY - current) * sizeof(storage_type));
+				std::memset(plf::void_cast(buffer + current), 0, (PLF_ARRAY_CAPACITY - current) * sizeof(storage_type));
 			}
 		}
 		else if (shift_amount != 0)
@@ -1237,7 +1010,7 @@ public:
 			else
 		#endif
 		{
-			std::memset(static_cast<void *>(buffer), 0, current * sizeof(storage_type));
+			std::memset(plf::void_cast(buffer), 0, current * sizeof(storage_type));
 		}
 
 		set_overflow_to_zero();
@@ -1449,17 +1222,13 @@ namespace std
 }
 
 
-#undef PLF_CONSTEVAL_SUPPORT
-#undef PLF_CPP11_SUPPORT
-#undef PLF_CPP20_SUPPORT
-#undef PLF_CONSTFUNC
-#undef PLF_CONSTEXPR
-#undef PLF_NOEXCEPT
-#undef PLF_EXCEPTIONS_SUPPORT
-
 #undef PLF_TYPE_BITWIDTH
 #undef PLF_ARRAY_CAPACITY
 #undef PLF_ARRAY_CAPACITY_BITS
 #undef PLF_ARRAY_CAPACITY_BYTES
+
+#ifdef PLF_BITSET_DEFINES
+	#include "plf_tools_undef.h"
+#endif
 
 #endif // PLF_BITSET_H

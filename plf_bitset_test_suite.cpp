@@ -1,26 +1,9 @@
+#include "plf_tools.h"
+
 #include <cstdio>
 #include <iostream>
 #include "plf_bitset.h"
 
-
-#if defined(_MSC_VER) && !defined(__clang__) && !defined(__GNUC__)
-	#if _MSC_VER >= 1900
-		#define PLF_CPP11_SUPPORT
-	#endif
-
-#elif defined(__cplusplus) && __cplusplus >= 201103L // C++11 support, at least
-	#if defined(__GNUC__) && defined(__GNUC_MINOR__) && !defined(__clang__) // If compiler is GCC/G++
-		#if (__GNUC__ == 4 && __GNUC_MINOR__ >= 7) || __GNUC__ > 4
-			#define PLF_CPP11_SUPPORT
-		#endif
-	#elif defined(__clang__)
-		#if __has_feature(cxx_noexcept)
-			#define PLF_CPP11_SUPPORT
-		#endif
-	#else // Assume support for other compilers
-		#define PLF_CPP11_SUPPORT
-	#endif
-#endif
 
 
 void message(const char *message_text)
@@ -148,7 +131,7 @@ int main()
 
 		for (unsigned int index = 0; index != 134; ++index)
 		{
-			const unsigned int num = rand() & 1;
+			const bool num = static_cast<bool>(rand() & 1);
 			values.set(index, num);
 			total += num;
 		}
@@ -364,7 +347,6 @@ int main()
 		}
 
 		message("prev_one series test passed");
-
 	}
 
 	{
