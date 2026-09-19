@@ -464,7 +464,7 @@ int main()
 
 		for (unsigned int counter = 0; counter != 100000; ++counter)
 		{
-			const unsigned int start = (rand() % (bitset_size - 256)) + 128, end = start + (rand() % ((bitset_size - start) - 256)) + 128;
+			const unsigned int start = (rand() % (bitset_size - 512)) + 128, end = start + (rand() % ((bitset_size - start) - 256)) + 128;
 			const unsigned int test_range_start = start - (rand() % 128), test_range_end = end + (rand() % 128);
 			values.set_range(start, end);
 			const unsigned int counted_range = values.count_range(test_range_start, test_range_end);

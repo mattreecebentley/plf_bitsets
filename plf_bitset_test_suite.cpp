@@ -153,7 +153,7 @@ int main()
 		plf::bitset<134> and_values = values;
 		and_values &= flip_values;
 		plf::bitset<134> and_values2 = values & flip_values;
-		
+
 		failpass("And test", and_values.count() == 0 && and_values == and_values2);
 
 
@@ -254,7 +254,7 @@ int main()
 
 		for (unsigned int counter = 0; counter != 100000; ++counter)
 		{
-			const unsigned int start = (rand() % (bitset_size - 256)) + 128, end = start + (rand() % ((bitset_size - start) - 256)) + 128;
+			const unsigned int start = (rand() % (bitset_size - 512)) + 128, end = start + (rand() % ((bitset_size - start) - 256)) + 128;
 			const unsigned int test_range_start = start - (rand() % 128), test_range_end = end + (rand() % 128);
 			values.set_range(start, end);
 			const unsigned int counted_range = values.count_range(test_range_start, test_range_end);
