@@ -497,6 +497,18 @@ int main()
 	}
 
 
+	{
+		// See plf_bitset_test_suite.cpp for an explanation of these tests:
+		const std::size_t not_found = std::numeric_limits<std::size_t>::max();
+		plf::bitsetb<false, unsigned char> values(1000);
+
+		values.reset();
+		values.set(5);
+		failpass("next_one not-found sentinel test", values.next_one(995) == not_found);
+		failpass("prev_one not-found sentinel test", values.prev_one(3) == not_found);
+	}
+
+
 	printf("Press ENTER to quit");
 	getchar();
 
