@@ -678,7 +678,11 @@ public:
 			return index;
 		}
 
-		if (++word_index == PLF_ARRAY_CAPACITY) return std::numeric_limits<size_type>::max();
+		if (++word_index == PLF_ARRAY_CAPACITY)
+		{
+			set_overflow_to_zero();
+			return std::numeric_limits<size_type>::max();
+		}
 		return search_zero_forwards(word_index);
 	}
 
@@ -709,7 +713,11 @@ public:
 			return index;
 		}
 
-		if (word_index == 0) return std::numeric_limits<size_type>::max();
+		if (word_index == 0)
+		{
+			set_overflow_to_zero();
+			return std::numeric_limits<size_type>::max();
+		}
 		return search_zero_backwards(word_index - 1);
 	}
 
