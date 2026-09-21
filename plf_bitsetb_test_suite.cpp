@@ -28,6 +28,42 @@ void failpass(const char *test_type, bool condition)
 
 
 
+// The overflow bits (those past total_size in the final storage_type unit) must never be visible through the public interface, whatever the size. A size which is an exact multiple of the storage_type bitwidth leaves no overflow bits at all, so the overflow manipulation must be a no-op for those sizes:
+
+template <typename storage_type>
+void overflow_test(const char *test_type)
+{
+	const std::size_t word_bits = sizeof(storage_type) * 8;
+	storage_type buffer[2];
+
+	for (std::size_t size = 1; size <= word_bits * 2; ++size)
+	{
+		plf::bitsetb<true, storage_type> values(size, buffer);
+		values.reset();
+
+		const bool reset_ok = !values.all() && values.any() == false && values.none() && values.count() == 0 && values.first_zero() == 0 && values.last_zero() == size - 1 && values.first_one() == std::numeric_limits<std::size_t>::max() && values.last_one() == std::numeric_limits<std::size_t>::max();
+
+		values.set();
+
+		const bool set_ok = values.all() && values.any() && !values.none() && values.count() == size && values.first_one() == 0 && values.last_one() == size - 1 && values.first_zero() == std::numeric_limits<std::size_t>::max() && values.last_zero() == std::numeric_limits<std::size_t>::max();
+
+		values.reset();
+
+		const bool reset_again_ok = !values.all() && values.count() == 0;
+
+		if (!reset_ok || !set_ok || !reset_again_ok)
+		{
+			printf("%s failed at size %lu (reset_ok == %u, set_ok == %u, reset_again_ok == %u). Press ENTER to quit.", test_type, static_cast<unsigned long>(size), static_cast<unsigned int>(reset_ok), static_cast<unsigned int>(set_ok), static_cast<unsigned int>(reset_again_ok));
+			getchar();
+			abort();
+		}
+	}
+
+	failpass(test_type, true);
+}
+
+
+
 int main()
 {
 	{
@@ -63,6 +99,10 @@ int main()
 		}
 
 		failpass("Reset and count test", total == total2  && total2 == 0);
+
+		overflow_test<unsigned int>("Overflow test, unsigned int storage");
+		overflow_test<std::size_t>("Overflow test, size_t storage");
+
 
 		values.reset();
 

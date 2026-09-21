@@ -32,6 +32,23 @@ void failpass(const char *test_type, bool condition)
 
 
 
+template <std::size_t total_size, typename storage_type>
+void exact_multiple_test(const char *test_type)
+{
+	plf::bitset<total_size, storage_type> values;
+	values.reset();
+
+	const bool reset_ok = !values.all() && values.first_zero() == 0 && values.last_zero() == total_size - 1 && values.count() == 0;
+
+	values.set();
+
+	const bool set_ok = values.all() && values.first_zero() == std::numeric_limits<std::size_t>::max() && values.count() == total_size;
+
+	failpass(test_type, reset_ok && set_ok);
+}
+
+
+
 int main()
 {
 	{
@@ -73,6 +90,12 @@ int main()
 		}
 
 		failpass("Reset and count test", total == total2  && total2 == 0);
+
+		// total_size an exact multiple of the storage_type bitwidth leaves no overflow bits, so the overflow manipulation must be a no-op:
+		exact_multiple_test<sizeof(unsigned int) * 8, unsigned int>("Exact-multiple overflow test, one word/unsigned int");
+		exact_multiple_test<sizeof(unsigned int) * 16, unsigned int>("Exact-multiple overflow test, two words/unsigned int");
+		exact_multiple_test<sizeof(std::size_t) * 8, std::size_t>("Exact-multiple overflow test, one word/size_t");
+		exact_multiple_test<sizeof(std::size_t) * 16, std::size_t>("Exact-multiple overflow test, two words/size_t");
 
 		{
 			const unsigned int bitset_size = 584;

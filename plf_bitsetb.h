@@ -66,8 +66,8 @@ private:
 
 	PLF_CONSTFUNC void set_overflow_to_one() PLF_NOEXCEPT
 	{ // set all bits > size to 1
-		const storage_type shift = PLF_ARRAY_CAPACITY_BITS - total_size;
-		buffer[PLF_ARRAY_CAPACITY - 1] |= std::numeric_limits<storage_type>::max() << ((PLF_TYPE_BITWIDTH * (shift != 0)) - shift);
+		const size_type shift = PLF_ARRAY_CAPACITY_BITS - total_size;
+		buffer[PLF_ARRAY_CAPACITY - 1] |= static_cast<storage_type>(~(std::numeric_limits<storage_type>::max() >> shift));
 	}
 
 
