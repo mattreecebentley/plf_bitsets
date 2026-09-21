@@ -74,8 +74,8 @@ private:
 				buffer[PLF_ARRAY_CAPACITY - 1] |= std::numeric_limits<storage_type>::max() << (PLF_TYPE_BITWIDTH - (PLF_ARRAY_CAPACITY_BITS - total_size));
 			}
 		#else // Can't remove the code if total_size % PLF_TYPE_BITWIDTH == 0, so avoid the branch instead:
-			const storage_type shift = PLF_ARRAY_CAPACITY_BITS - total_size;
-			buffer[PLF_ARRAY_CAPACITY - 1] |= std::numeric_limits<storage_type>::max() << ((PLF_TYPE_BITWIDTH * (shift != 0)) - shift);
+			const size_type shift = PLF_ARRAY_CAPACITY_BITS - total_size;
+			buffer[PLF_ARRAY_CAPACITY - 1] |= static_cast<storage_type>(~(std::numeric_limits<storage_type>::max() >> shift));
 		#endif
 	}
 
