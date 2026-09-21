@@ -358,8 +358,6 @@ public:
 
 	PLF_CONSTFUNC bool all_range(const size_type begin, const size_type end)
 	{
-		set_overflow_to_one();
-
 		if PLF_CONSTEXPR (hardened)
 		{
 			check_index_is_within_size(begin);
@@ -373,6 +371,8 @@ public:
 		{
 			return false;
 		}
+
+		set_overflow_to_one();
 
 		const size_type begin_type_index = begin / PLF_TYPE_BITWIDTH, end_type_index = (end - 1) / PLF_TYPE_BITWIDTH, begin_subindex = begin % PLF_TYPE_BITWIDTH, distance_to_end_storage = PLF_TYPE_BITWIDTH - (end % PLF_TYPE_BITWIDTH);
 
