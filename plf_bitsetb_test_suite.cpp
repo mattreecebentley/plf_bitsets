@@ -26,6 +26,33 @@ void failpass(const char *test_type, bool condition)
 
 
 
+template <typename storage_type>
+void overflow_restore_test(const char *test_type)
+{
+	const std::size_t word_bits = sizeof(storage_type) * 8;
+	storage_type buffer[2];
+	bool passed = true;
+
+	for (std::size_t size = 1; size <= word_bits * 2; ++size)
+	{
+		if (size % word_bits == 0) continue;
+
+		plf::bitsetb<true, storage_type> values(size, buffer);
+
+		values.set();
+		values.next_zero(size - 1);
+		passed = passed && values.count() == size;
+
+		values.set();
+		values.prev_zero(0);
+		passed = passed && values.count() == size;
+	}
+
+	failpass(test_type, passed);
+}
+
+
+
 
 
 int main()
@@ -63,6 +90,9 @@ int main()
 		}
 
 		failpass("Reset and count test", total == total2  && total2 == 0);
+
+		overflow_restore_test<unsigned int>("Overflow restore test, unsigned int storage");
+		overflow_restore_test<std::size_t>("Overflow restore test, size_t storage");
 
 		values.reset();
 
@@ -191,6 +221,8 @@ int main()
 		failpass("any_range test 2", !and_values.any_range(34, 45) && and_values.any_range(130, 134));
 		failpass("all_range test 2", !or_values.all_range(90, 112) && or_values.all_range(34, 45));
 		failpass("none_range test 2", and_values.none_range(90, 99) && !and_values.none_range(129, 134));
+
+		failpass("all_range empty range test", !and_values.all_range(50, 50) && and_values.count() == 2);
 
 		failpass("first_one test", and_values.first_one() == 100);
 		failpass("next_one test", and_values.next_one(64) == 100);
@@ -409,6 +441,8 @@ int main()
 		failpass("any_range test 2", !and_values.any_range(34, 45) && and_values.any_range(130, 134));
 		failpass("all_range test 2", !or_values.all_range(90, 112) && or_values.all_range(34, 45));
 		failpass("none_range test 2", and_values.none_range(90, 99) && !and_values.none_range(129, 134));
+
+		failpass("all_range empty range test", !and_values.all_range(50, 50) && and_values.count() == 2);
 
 		failpass("first_one test", and_values.first_one() == 100);
 		failpass("next_one test", and_values.next_one(64) == 100);

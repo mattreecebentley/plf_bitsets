@@ -30,6 +30,24 @@ void failpass(const char *test_type, bool condition)
 
 
 
+template <std::size_t total_size, typename storage_type>
+void overflow_restore_test(const char *test_type)
+{
+	plf::bitset<total_size, storage_type> values;
+
+	values.set();
+	values.next_zero(total_size - 1);
+	const bool next_zero_ok = values.count() == total_size;
+
+	values.set();
+	values.prev_zero(0);
+	const bool prev_zero_ok = values.count() == total_size;
+
+	failpass(test_type, next_zero_ok && prev_zero_ok);
+}
+
+
+
 
 
 int main()
@@ -73,6 +91,10 @@ int main()
 		}
 
 		failpass("Reset and count test", total == total2  && total2 == 0);
+
+		overflow_restore_test<2, unsigned int>("Overflow restore test, 2 bits/unsigned int");
+		overflow_restore_test<sizeof(unsigned int) * 8 + 1, unsigned int>("Overflow restore test, one word plus one/unsigned int");
+		overflow_restore_test<sizeof(std::size_t) * 16 - 1, std::size_t>("Overflow restore test, two words less one/size_t");
 
 		{
 			const unsigned int bitset_size = 584;
@@ -223,6 +245,8 @@ int main()
 		failpass("any_range test 2", !and_values.any_range(34, 45) && and_values.any_range(130, 134));
 		failpass("all_range test 2", !or_values.all_range(90, 112) && or_values.all_range(34, 45));
 		failpass("none_range test 2", and_values.none_range(90, 99) && !and_values.none_range(129, 134));
+
+		failpass("all_range empty range test", !and_values.all_range(50, 50) && and_values.count() == 2);
 
 		failpass("first_one test", and_values.first_one() == 100);
 		failpass("next_one test", and_values.next_one(64) == 100);
