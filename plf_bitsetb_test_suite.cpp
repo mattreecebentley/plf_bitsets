@@ -222,6 +222,8 @@ int main()
 		failpass("all_range test 2", !or_values.all_range(90, 112) && or_values.all_range(34, 45));
 		failpass("none_range test 2", and_values.none_range(90, 99) && !and_values.none_range(129, 134));
 
+		failpass("all_range empty range test", !and_values.all_range(50, 50) && and_values.count() == 2);
+
 		failpass("first_one test", and_values.first_one() == 100);
 		failpass("next_one test", and_values.next_one(64) == 100);
 		failpass("next_one test", and_values.next_one(54) == 100);
@@ -439,6 +441,8 @@ int main()
 		failpass("any_range test 2", !and_values.any_range(34, 45) && and_values.any_range(130, 134));
 		failpass("all_range test 2", !or_values.all_range(90, 112) && or_values.all_range(34, 45));
 		failpass("none_range test 2", and_values.none_range(90, 99) && !and_values.none_range(129, 134));
+
+		failpass("all_range empty range test", !and_values.all_range(50, 50) && and_values.count() == 2);
 
 		failpass("first_one test", and_values.first_one() == 100);
 		failpass("next_one test", and_values.next_one(64) == 100);
