@@ -624,7 +624,7 @@ public:
 		const storage_type current_word = buffer[word_index] >> index;
 
 		if (current_word != 0) return (word_index * PLF_TYPE_BITWIDTH) + plf::countr_zero(current_word) + index;
-		if (++word_index == PLF_ARRAY_CAPACITY) return std::numeric_limits<storage_type>::max();
+		if (++word_index == PLF_ARRAY_CAPACITY) return std::numeric_limits<size_type>::max();
 		return search_one_forwards(word_index);
 	}
 
@@ -647,7 +647,7 @@ public:
 		const storage_type current_word = buffer[word_index] << ((PLF_TYPE_BITWIDTH - 1) - index);
 
 		if (current_word != 0) return ((word_index * PLF_TYPE_BITWIDTH) + index) - plf::countl_zero(current_word);
-		if (word_index == 0) return std::numeric_limits<storage_type>::max();
+		if (word_index == 0) return std::numeric_limits<size_type>::max();
 		return search_one_backwards(word_index - 1);
 	}
 

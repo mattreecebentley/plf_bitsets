@@ -639,7 +639,7 @@ public:
 			return ((word_index * PLF_TYPE_BITWIDTH) + index - 1) - plf::countl_zero(current_word);
 		}
 
-		if (word_index == 0) return std::numeric_limits<storage_type>::max();
+		if (word_index == 0) return std::numeric_limits<size_type>::max();
 
 		return search_one_backwards(word_index - 1);
 	}
@@ -709,7 +709,7 @@ public:
 		if (word_index == 0)
 		{
 			set_overflow_to_zero();
-			return std::numeric_limits<storage_type>::max();
+			return std::numeric_limits<size_type>::max();
 		}
 
 		return search_zero_backwards(word_index - 1);
