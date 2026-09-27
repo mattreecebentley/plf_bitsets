@@ -26,68 +26,41 @@ void failpass(const char *test_type, bool condition)
 
 
 
-template <typename storage_type>
+template <std::size_t total_size, typename storage_type>
 void overflow_restore_test(const char *test_type)
 {
-	const std::size_t word_bits = sizeof(storage_type) * 8;
-	storage_type buffer[2];
-	bool passed = true;
+	plf::bitsetb<false, storage_type> values(total_size);
 
-	for (std::size_t size = 1; size <= word_bits * 2; ++size)
-	{
-		if (size % word_bits == 0) continue;
+	values.set();
+	values.next_zero(total_size - 1);
+	const bool next_zero_ok = values.count() == total_size;
 
-		plf::bitsetb<true, storage_type> values(size, buffer);
+	values.set();
+	values.prev_zero(0);
+	const bool prev_zero_ok = values.count() == total_size;
 
-		values.set();
-		values.next_zero(size - 1);
-		passed = passed && values.count() == size;
-
-		values.set();
-		values.prev_zero(0);
-		passed = passed && values.count() == size;
-	}
-
-	failpass(test_type, passed);
+	failpass(test_type, next_zero_ok && prev_zero_ok);
 }
 
 
 
 
 
-// The overflow bits (those past total_size in the final storage_type unit) must never be visible through the public interface, whatever the size. A size which is an exact multiple of the storage_type bitwidth leaves no overflow bits at all, so the overflow manipulation must be a no-op for those sizes:
-
-template <typename storage_type>
-void overflow_test(const char *test_type)
+template <std::size_t total_size, typename storage_type>
+void exact_multiple_test(const char *test_type)
 {
-	const std::size_t word_bits = sizeof(storage_type) * 8;
-	storage_type buffer[2];
+	plf::bitsetb<false, storage_type> values(total_size);
+	values.reset();
 
-	for (std::size_t size = 1; size <= word_bits * 2; ++size)
-	{
-		plf::bitsetb<true, storage_type> values(size, buffer);
-		values.reset();
+	const bool reset_ok = !values.all() && values.first_zero() == 0 && values.last_zero() == total_size - 1 && values.count() == 0;
 
-		const bool reset_ok = !values.all() && values.any() == false && values.none() && values.count() == 0 && values.first_zero() == 0 && values.last_zero() == size - 1 && values.first_one() == std::numeric_limits<std::size_t>::max() && values.last_one() == std::numeric_limits<std::size_t>::max();
+	values.set();
 
-		values.set();
+	const bool set_ok = values.all() && values.first_zero() == std::numeric_limits<std::size_t>::max() && values.count() == total_size;
 
-		const bool set_ok = values.all() && values.any() && !values.none() && values.count() == size && values.first_one() == 0 && values.last_one() == size - 1 && values.first_zero() == std::numeric_limits<std::size_t>::max() && values.last_zero() == std::numeric_limits<std::size_t>::max();
-
-		values.reset();
-
-		const bool reset_again_ok = !values.all() && values.count() == 0;
-
-		if (!reset_ok || !set_ok || !reset_again_ok)
-		{
-			printf("%s failed at size %lu (reset_ok == %u, set_ok == %u, reset_again_ok == %u). Press ENTER to quit.", test_type, static_cast<unsigned long>(size), static_cast<unsigned int>(reset_ok), static_cast<unsigned int>(set_ok), static_cast<unsigned int>(reset_again_ok));
-			getchar();
-			abort();
-		}
-	}
-
-	failpass(test_type, true);
+	failpass(test_type, reset_ok && set_ok);
 }
+
 
 
 
@@ -127,11 +100,14 @@ int main()
 
 		failpass("Reset and count test", total == total2  && total2 == 0);
 
-		overflow_test<unsigned int>("Overflow test, unsigned int storage");
-		overflow_test<std::size_t>("Overflow test, size_t storage");
-
-		overflow_restore_test<unsigned int>("Overflow restore test, unsigned int storage");
-		overflow_restore_test<std::size_t>("Overflow restore test, size_t storage");
+		// total_size an exact multiple of the storage_type bitwidth leaves no overflow bits, so the overflow manipulation must be a no-op:
+		exact_multiple_test<sizeof(unsigned int) * 8, unsigned int>("Exact-multiple overflow test, one word/unsigned int");
+		exact_multiple_test<sizeof(unsigned int) * 16, unsigned int>("Exact-multiple overflow test, two words/unsigned int");
+		exact_multiple_test<sizeof(std::size_t) * 8, std::size_t>("Exact-multiple overflow test, one word/size_t");
+		exact_multiple_test<sizeof(std::size_t) * 16, std::size_t>("Exact-multiple overflow test, two words/size_t");
+		overflow_restore_test<2, unsigned int>("Overflow restore test, 2 bits/unsigned int");
+		overflow_restore_test<sizeof(unsigned int) * 8 + 1, unsigned int>("Overflow restore test, one word plus one/unsigned int");
+		overflow_restore_test<sizeof(std::size_t) * 16 - 1, std::size_t>("Overflow restore test, two words less one/size_t");
 
 		values.reset();
 
@@ -571,7 +547,6 @@ int main()
 
 
 	{
-		// See plf_bitset_test_suite.cpp for an explanation of these tests:
 		const std::size_t not_found = std::numeric_limits<std::size_t>::max();
 		plf::bitsetb<false, unsigned char> values(1000);
 

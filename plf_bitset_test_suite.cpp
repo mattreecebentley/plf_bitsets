@@ -507,9 +507,6 @@ int main()
 
 
 	{
-		// The search functions return size_type, so the "not found" sentinel must be
-		// numeric_limits<size_type>::max(). With a storage_type narrower than size_type a
-		// storage_type sentinel is both a different value and a valid index:
 		const std::size_t not_found = std::numeric_limits<std::size_t>::max();
 
 		plf::bitset<1000, unsigned char> values;
