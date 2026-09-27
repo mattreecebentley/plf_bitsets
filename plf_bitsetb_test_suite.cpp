@@ -26,6 +26,33 @@ void failpass(const char *test_type, bool condition)
 
 
 
+template <typename storage_type>
+void overflow_restore_test(const char *test_type)
+{
+	const std::size_t word_bits = sizeof(storage_type) * 8;
+	storage_type buffer[2];
+	bool passed = true;
+
+	for (std::size_t size = 1; size <= word_bits * 2; ++size)
+	{
+		if (size % word_bits == 0) continue;
+
+		plf::bitsetb<true, storage_type> values(size, buffer);
+
+		values.set();
+		values.next_zero(size - 1);
+		passed = passed && values.count() == size;
+
+		values.set();
+		values.prev_zero(0);
+		passed = passed && values.count() == size;
+	}
+
+	failpass(test_type, passed);
+}
+
+
+
 
 
 // The overflow bits (those past total_size in the final storage_type unit) must never be visible through the public interface, whatever the size. A size which is an exact multiple of the storage_type bitwidth leaves no overflow bits at all, so the overflow manipulation must be a no-op for those sizes:
@@ -103,6 +130,8 @@ int main()
 		overflow_test<unsigned int>("Overflow test, unsigned int storage");
 		overflow_test<std::size_t>("Overflow test, size_t storage");
 
+		overflow_restore_test<unsigned int>("Overflow restore test, unsigned int storage");
+		overflow_restore_test<std::size_t>("Overflow restore test, size_t storage");
 
 		values.reset();
 
@@ -231,6 +260,8 @@ int main()
 		failpass("any_range test 2", !and_values.any_range(34, 45) && and_values.any_range(130, 134));
 		failpass("all_range test 2", !or_values.all_range(90, 112) && or_values.all_range(34, 45));
 		failpass("none_range test 2", and_values.none_range(90, 99) && !and_values.none_range(129, 134));
+
+		failpass("all_range empty range test", !and_values.all_range(50, 50) && and_values.count() == 2);
 
 		failpass("first_one test", and_values.first_one() == 100);
 		failpass("next_one test", and_values.next_one(64) == 100);
@@ -450,6 +481,8 @@ int main()
 		failpass("all_range test 2", !or_values.all_range(90, 112) && or_values.all_range(34, 45));
 		failpass("none_range test 2", and_values.none_range(90, 99) && !and_values.none_range(129, 134));
 
+		failpass("all_range empty range test", !and_values.all_range(50, 50) && and_values.count() == 2);
+
 		failpass("first_one test", and_values.first_one() == 100);
 		failpass("next_one test", and_values.next_one(64) == 100);
 		failpass("next_one test", and_values.next_one(54) == 100);
@@ -534,6 +567,18 @@ int main()
 		}
 
 		message("Bulk count_range/all_range/any_range/none_range tests passed");
+	}
+
+
+	{
+		// See plf_bitset_test_suite.cpp for an explanation of these tests:
+		const std::size_t not_found = std::numeric_limits<std::size_t>::max();
+		plf::bitsetb<false, unsigned char> values(1000);
+
+		values.reset();
+		values.set(5);
+		failpass("next_one not-found sentinel test", values.next_one(995) == not_found);
+		failpass("prev_one not-found sentinel test", values.prev_one(3) == not_found);
 	}
 
 
