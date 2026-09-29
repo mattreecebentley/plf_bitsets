@@ -500,7 +500,7 @@ public:
 		if (begin_type_index != end_type_index) // ie. if first and last bit to be set are not in the same storage_type unit
 		{
 			// Count first storage_type:
-			size_type total = plf::popcount(buffer[begin_type_index] & (std::numeric_limits<storage_type>::max() << begin_subindex));
+			size_type total = plf::popcount(static_cast<storage_type>(buffer[begin_type_index] & (std::numeric_limits<storage_type>::max() << begin_subindex)));
 
 			// Count all intermediate storage_type's (if any):
 			for (size_type current = begin_type_index + 1; current != end_type_index; ++current)
@@ -509,12 +509,12 @@ public:
 			}
 
 			// Count last storage_type:
-			total += plf::popcount(buffer[end_type_index] & (std::numeric_limits<storage_type>::max() >> distance_to_end_storage));
+			total += plf::popcount(static_cast<storage_type>(buffer[end_type_index] & (std::numeric_limits<storage_type>::max() >> distance_to_end_storage)));
 			return total;
 		}
 		else
 		{
-			return plf::popcount(buffer[begin_type_index] & ((std::numeric_limits<storage_type>::max() << begin_subindex) & (std::numeric_limits<storage_type>::max() >> distance_to_end_storage)));
+			return plf::popcount(static_cast<storage_type>(buffer[begin_type_index] & ((std::numeric_limits<storage_type>::max() << begin_subindex) & (std::numeric_limits<storage_type>::max() >> distance_to_end_storage))));
 		}
 	}
 
