@@ -50,6 +50,26 @@ void overflow_restore_test(const char *test_type)
 
 
 
+template <typename storage_type>
+void all_range_narrow_test(const char *test_type)
+{
+	const std::size_t word = sizeof(storage_type) * 8;
+	plf::bitset<sizeof(storage_type) * 16, storage_type> values;
+	values.set();
+
+	const bool set_ok = values.all_range(0, word / 2) && values.all_range(1, word + 3);
+
+	values.reset(word / 2 - 1);
+
+	const bool reset_ok = !values.all_range(0, word / 2) && !values.all_range(1, word + 3) && values.all_range(word / 2, word + 3);
+
+	failpass(test_type, set_ok && reset_ok);
+}
+
+
+
+
+
 template <std::size_t total_size, typename storage_type>
 void exact_multiple_test(const char *test_type)
 {
@@ -114,6 +134,8 @@ int main()
 		exact_multiple_test<sizeof(unsigned int) * 16, unsigned int>("Exact-multiple overflow test, two words/unsigned int");
 		exact_multiple_test<sizeof(std::size_t) * 8, std::size_t>("Exact-multiple overflow test, one word/size_t");
 		exact_multiple_test<sizeof(std::size_t) * 16, std::size_t>("Exact-multiple overflow test, two words/size_t");
+		all_range_narrow_test<unsigned char>("all_range narrow storage test/unsigned char");
+		all_range_narrow_test<unsigned short>("all_range narrow storage test/unsigned short");
 		overflow_restore_test<2, unsigned int>("Overflow restore test, 2 bits/unsigned int");
 		overflow_restore_test<sizeof(unsigned int) * 8 + 1, unsigned int>("Overflow restore test, one word plus one/unsigned int");
 		overflow_restore_test<sizeof(std::size_t) * 16 - 1, std::size_t>("Overflow restore test, two words less one/size_t");
