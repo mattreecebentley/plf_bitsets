@@ -210,7 +210,7 @@ public:
 			return;
 		}
 
-		const size_type begin_type_index = begin / PLF_TYPE_BITWIDTH, end_type_index = (end - 1) / PLF_TYPE_BITWIDTH, begin_subindex = begin % PLF_TYPE_BITWIDTH, distance_to_end_storage = PLF_TYPE_BITWIDTH - (end % PLF_TYPE_BITWIDTH);
+		const size_type begin_type_index = begin / PLF_TYPE_BITWIDTH, end_type_index = (end - 1) / PLF_TYPE_BITWIDTH, begin_subindex = begin % PLF_TYPE_BITWIDTH, distance_to_end_storage = (PLF_TYPE_BITWIDTH - (end % PLF_TYPE_BITWIDTH)) % PLF_TYPE_BITWIDTH;
 
 		if (begin_type_index != end_type_index) // ie. if first and last bit to be set are not in the same storage_type unit
 		{
@@ -294,7 +294,7 @@ public:
 			return;
 		}
 
-		const size_type begin_type_index = begin / PLF_TYPE_BITWIDTH, end_type_index = (end - 1) / PLF_TYPE_BITWIDTH, begin_subindex = begin % PLF_TYPE_BITWIDTH, distance_to_end_storage = PLF_TYPE_BITWIDTH - (end % PLF_TYPE_BITWIDTH);
+		const size_type begin_type_index = begin / PLF_TYPE_BITWIDTH, end_type_index = (end - 1) / PLF_TYPE_BITWIDTH, begin_subindex = begin % PLF_TYPE_BITWIDTH, distance_to_end_storage = (PLF_TYPE_BITWIDTH - (end % PLF_TYPE_BITWIDTH)) % PLF_TYPE_BITWIDTH;
 
 		if (begin_type_index != end_type_index)
 		{
@@ -373,7 +373,7 @@ public:
 
 		set_overflow_to_one();
 
-		const size_type begin_type_index = begin / PLF_TYPE_BITWIDTH, end_type_index = (end - 1) / PLF_TYPE_BITWIDTH, begin_subindex = begin % PLF_TYPE_BITWIDTH, distance_to_end_storage = PLF_TYPE_BITWIDTH - (end % PLF_TYPE_BITWIDTH);
+		const size_type begin_type_index = begin / PLF_TYPE_BITWIDTH, end_type_index = (end - 1) / PLF_TYPE_BITWIDTH, begin_subindex = begin % PLF_TYPE_BITWIDTH, distance_to_end_storage = (PLF_TYPE_BITWIDTH - (end % PLF_TYPE_BITWIDTH)) % PLF_TYPE_BITWIDTH;
 
 		if (begin_type_index != end_type_index) // ie. if first and last bit to be set are not in the same storage_type unit
 		{
@@ -444,7 +444,7 @@ public:
 			return false;
 		}
 
-		const size_type begin_type_index = begin / PLF_TYPE_BITWIDTH, end_type_index = (end - 1) / PLF_TYPE_BITWIDTH, begin_subindex = begin % PLF_TYPE_BITWIDTH, distance_to_end_storage = PLF_TYPE_BITWIDTH - (end % PLF_TYPE_BITWIDTH);
+		const size_type begin_type_index = begin / PLF_TYPE_BITWIDTH, end_type_index = (end - 1) / PLF_TYPE_BITWIDTH, begin_subindex = begin % PLF_TYPE_BITWIDTH, distance_to_end_storage = (PLF_TYPE_BITWIDTH - (end % PLF_TYPE_BITWIDTH)) % PLF_TYPE_BITWIDTH;
 
 		if (begin_type_index != end_type_index)
 		{
@@ -511,7 +511,7 @@ public:
 			return 0;
 		}
 
-		const size_type begin_type_index = begin / PLF_TYPE_BITWIDTH, end_type_index = (end - 1) / PLF_TYPE_BITWIDTH, begin_subindex = begin % PLF_TYPE_BITWIDTH, distance_to_end_storage = PLF_TYPE_BITWIDTH - (end % PLF_TYPE_BITWIDTH);
+		const size_type begin_type_index = begin / PLF_TYPE_BITWIDTH, end_type_index = (end - 1) / PLF_TYPE_BITWIDTH, begin_subindex = begin % PLF_TYPE_BITWIDTH, distance_to_end_storage = (PLF_TYPE_BITWIDTH - (end % PLF_TYPE_BITWIDTH)) % PLF_TYPE_BITWIDTH;
 		size_type total = 0;
 
 		if (begin_type_index != end_type_index) // ie. if first and last bit to be set are not in the same storage_type unit
