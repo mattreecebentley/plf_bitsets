@@ -50,6 +50,41 @@ void overflow_restore_test(const char *test_type)
 
 
 
+template <typename storage_type>
+void prev_one_aligned_index_test(const char *test_type)
+{ // prev_one on an index that is a multiple of the storage bitwidth (sub-index 0) used to shift by the full bitwidth of the type. Narrower storage types are promoted to int for the shift, so only int-width and wider types are tested here
+	const std::size_t bitwidth = sizeof(storage_type) * 8, none = std::numeric_limits<std::size_t>::max();
+	plf::bitset<bitwidth * 4, storage_type> values;
+	bool ok = true;
+
+	values.set(0);
+	ok = ok && values.prev_one(0) == none; // search excludes index itself
+
+	for (std::size_t word = 1; word != 4; ++word)
+	{
+		const std::size_t index = word * bitwidth;
+
+		values.reset();
+		values.set(index);
+		values.set(index + 1);
+		values.set(index + bitwidth - 1);
+		ok = ok && values.prev_one(index) == none; // only bits at or above index
+
+		values.set(index - 1);
+		ok = ok && values.prev_one(index) == index - 1; // highest bit of the previous word
+
+		values.reset(index - 1);
+		values.set(0);
+		ok = ok && values.prev_one(index) == 0; // lowest bit, several words back when word > 1
+	}
+
+	failpass(test_type, ok);
+}
+
+
+
+
+
 template <std::size_t total_size, typename storage_type>
 void exact_multiple_test(const char *test_type)
 {
@@ -117,6 +152,8 @@ int main()
 		overflow_restore_test<2, unsigned int>("Overflow restore test, 2 bits/unsigned int");
 		overflow_restore_test<sizeof(unsigned int) * 8 + 1, unsigned int>("Overflow restore test, one word plus one/unsigned int");
 		overflow_restore_test<sizeof(std::size_t) * 16 - 1, std::size_t>("Overflow restore test, two words less one/size_t");
+		prev_one_aligned_index_test<unsigned int>("prev_one word-aligned index test/unsigned int");
+		prev_one_aligned_index_test<std::size_t>("prev_one word-aligned index test/size_t");
 
 		{
 			const unsigned int bitset_size = 584;

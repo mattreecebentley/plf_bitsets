@@ -631,11 +631,11 @@ public:
 		const size_type word_index = index / PLF_TYPE_BITWIDTH;
 		index %= PLF_TYPE_BITWIDTH;
 
-		const storage_type current_word = buffer[word_index] << (PLF_TYPE_BITWIDTH - index);
-
-		if (index != 0 && current_word != 0)
+		if (index != 0) // Shifting by the full bitwidth of the type is undefined behaviour, so only shift once we know index isn't 0
 		{
-			return ((word_index * PLF_TYPE_BITWIDTH) + index - 1) - plf::countl_zero(current_word);
+			const storage_type current_word = buffer[word_index] << (PLF_TYPE_BITWIDTH - index);
+
+			if (current_word != 0) return ((word_index * PLF_TYPE_BITWIDTH) + index - 1) - plf::countl_zero(current_word);
 		}
 
 		if (word_index == 0) return std::numeric_limits<size_type>::max();
