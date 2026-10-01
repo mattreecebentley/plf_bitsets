@@ -46,6 +46,30 @@ void overflow_restore_test(const char *test_type)
 
 
 
+template <std::size_t total_words, typename storage_type>
+void range_end_aligned_test(const char *test_type)
+{
+	const std::size_t word = sizeof(storage_type) * 8, total_size = total_words * word;
+	plf::bitsetb<false, storage_type> values(total_size);
+	values.reset();
+
+	values.set_range(0, word);
+	const bool set_ok = values.count() == word && values.count_range(0, word) == word && values.all_range(0, word);
+
+	values.set_range(word, total_size);
+	const bool set_multi_ok = values.count() == total_size && values.count_range(1, total_size) == total_size - 1 && values.all_range(1, total_size);
+
+	values.reset_range(0, word);
+	values.reset_range(word + 1, total_size);
+	const bool reset_ok = values.count() == 1 && !values.any_range(0, word) && !values.any_range(word + 1, total_size) && values.any_range(0, word + 1);
+
+	failpass(test_type, set_ok && set_multi_ok && reset_ok);
+}
+
+
+
+
+
 template <typename storage_type>
 void all_range_narrow_test(const char *test_type)
 {
@@ -145,6 +169,8 @@ int main()
 		exact_multiple_test<sizeof(unsigned int) * 16, unsigned int>("Exact-multiple overflow test, two words/unsigned int");
 		exact_multiple_test<sizeof(std::size_t) * 8, std::size_t>("Exact-multiple overflow test, one word/size_t");
 		exact_multiple_test<sizeof(std::size_t) * 16, std::size_t>("Exact-multiple overflow test, two words/size_t");
+		range_end_aligned_test<3, unsigned int>("Word-aligned range end test/unsigned int");
+		range_end_aligned_test<3, std::size_t>("Word-aligned range end test/size_t");
 		all_range_narrow_test<unsigned char>("all_range narrow storage test/unsigned char");
 		all_range_narrow_test<unsigned short>("all_range narrow storage test/unsigned short");
 		count_range_narrow_test<unsigned char>("count_range narrow storage test/unsigned char");
