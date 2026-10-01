@@ -361,7 +361,7 @@ public:
 		if (begin_type_index != end_type_index) // ie. if first and last bit to be set are not in the same storage_type unit
 		{
 			// Check first storage_type:
-			if ((buffer[begin_type_index] | static_cast<storage_type>(~(std::numeric_limits<storage_type>::max() << begin_subindex))) != std::numeric_limits<storage_type>::max())
+			if (static_cast<storage_type>(buffer[begin_type_index] | ~(std::numeric_limits<storage_type>::max() << begin_subindex)) != std::numeric_limits<storage_type>::max())
 			{
 				set_overflow_to_zero();
 				return false;
@@ -378,7 +378,7 @@ public:
 			}
 
 			// Check last storage_type:
-			if ((buffer[end_type_index] | static_cast<storage_type>(~(std::numeric_limits<storage_type>::max() >> distance_to_end_storage))) != std::numeric_limits<storage_type>::max())
+			if (static_cast<storage_type>(buffer[end_type_index] | ~(std::numeric_limits<storage_type>::max() >> distance_to_end_storage)) != std::numeric_limits<storage_type>::max())
 			{
 				set_overflow_to_zero();
 				return false;
@@ -386,7 +386,7 @@ public:
 		}
 		else
 		{
-			if ((buffer[begin_type_index] | static_cast<storage_type>(~((std::numeric_limits<storage_type>::max() << begin_subindex) & (std::numeric_limits<storage_type>::max() >> distance_to_end_storage)))) != std::numeric_limits<storage_type>::max())
+			if (static_cast<storage_type>(buffer[begin_type_index] | ~((std::numeric_limits<storage_type>::max() << begin_subindex) & (std::numeric_limits<storage_type>::max() >> distance_to_end_storage))) != std::numeric_limits<storage_type>::max())
 			{
 				set_overflow_to_zero();
 				return false;
