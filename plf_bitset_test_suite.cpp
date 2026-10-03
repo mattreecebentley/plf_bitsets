@@ -152,6 +152,29 @@ void count_range_narrow_test(const char *test_type)
 
 
 template <std::size_t total_size, typename storage_type>
+void to_string_test(const char *test_type)
+{
+	plf::bitset<total_size, storage_type> values;
+	for (std::size_t index = 0; index < total_size; index += 3) values.set(index);
+	values.set(total_size - 1);
+
+	const std::string forwards = values.to_string('.', '#'), reverse = values.to_rstring('.', '#');
+	bool ok = forwards.size() == total_size && reverse.size() == total_size;
+
+	for (std::size_t index = 0; ok && index != total_size; ++index)
+	{
+		const char expected = values[index] ? '#' : '.';
+		ok = forwards[total_size - 1 - index] == expected && reverse[index] == expected;
+	}
+
+	failpass(test_type, ok);
+}
+
+
+
+
+
+template <std::size_t total_size, typename storage_type>
 void exact_multiple_test(const char *test_type)
 {
 	plf::bitset<total_size, storage_type> values;
@@ -215,6 +238,10 @@ int main()
 		exact_multiple_test<sizeof(unsigned int) * 16, unsigned int>("Exact-multiple overflow test, two words/unsigned int");
 		exact_multiple_test<sizeof(std::size_t) * 8, std::size_t>("Exact-multiple overflow test, one word/size_t");
 		exact_multiple_test<sizeof(std::size_t) * 16, std::size_t>("Exact-multiple overflow test, two words/size_t");
+		to_string_test<5, unsigned int>("to_string/to_rstring test, 5 bits/unsigned int");
+		to_string_test<77, unsigned char>("to_string/to_rstring test, 77 bits/unsigned char");
+		to_string_test<sizeof(std::size_t) * 8, std::size_t>("to_string/to_rstring test, one word/size_t");
+		to_string_test<200, std::size_t>("to_string/to_rstring test, 200 bits/size_t");
 		range_end_aligned_test<3, unsigned int>("Word-aligned range end test/unsigned int");
 		range_end_aligned_test<3, std::size_t>("Word-aligned range end test/size_t");
 		all_range_narrow_test<unsigned char>("all_range narrow storage test/unsigned char");
