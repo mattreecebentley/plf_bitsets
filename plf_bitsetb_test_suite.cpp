@@ -197,7 +197,7 @@ int main()
 		std::size_t buffer1[134], buffer2[134], buffer3[134], buffer4[134], buffer5[134];
 		plf::bitsetb<true> values(134, buffer1);
 
-		unsigned int total = 0, total2 = 0;
+		std::size_t total = 0, total2 = 0;
 
 		values.set();
 
@@ -435,7 +435,7 @@ int main()
 		message("\n\n\nTests with self-allocated buffer\n==================================\n\n");
 		plf::bitsetc values(134);
 
-		unsigned int total = 0, total2 = 0;
+		std::size_t total = 0, total2 = 0;
 
 		values.set();
 
@@ -657,7 +657,7 @@ int main()
 			const unsigned int start = (rand() % (bitset_size - 512)) + 128, end = start + (rand() % ((bitset_size - start) - 256)) + 128;
 			const unsigned int test_range_start = start - (rand() % 128), test_range_end = end + (rand() % 128);
 			values.set_range(start, end);
-			const unsigned int counted_range = values.count_range(test_range_start, test_range_end);
+			const unsigned int counted_range = static_cast<unsigned int>(values.count_range(test_range_start, test_range_end));
 
 			if (counted_range != end - start)
 			{

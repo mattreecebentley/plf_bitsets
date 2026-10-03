@@ -196,7 +196,7 @@ int main()
 	{
 		plf::bitset<134> values;
 
-		unsigned int total = 0, total2 = 0;
+		std::size_t total = 0, total2 = 0;
 
 		values.set();
 
@@ -443,7 +443,7 @@ int main()
 			const unsigned int start = (rand() % (bitset_size - 512)) + 128, end = start + (rand() % ((bitset_size - start) - 256)) + 128;
 			const unsigned int test_range_start = start - (rand() % 128), test_range_end = end + (rand() % 128);
 			values.set_range(start, end);
-			const unsigned int counted_range = values.count_range(test_range_start, test_range_end);
+			const unsigned int counted_range = static_cast<unsigned int>(values.count_range(test_range_start, test_range_end));
 
 			if (counted_range != end - start)
 			{
@@ -480,7 +480,7 @@ int main()
 		{
 			const unsigned int index = rand() % 500000;
 			values.set(index);
-			const unsigned int value = values.first_one();
+			const unsigned int value =  static_cast<unsigned int>(values.first_one());
 
 			if (value != index)
 			{
@@ -521,7 +521,7 @@ int main()
 			values.set(index2);
 			const std::size_t value = values.prev_one(location);
 
-			if (!((value == index && location > index) || (value == index2 && location > index2) || (value == std::numeric_limits<std::size_t>::max() && (location <= index && location <= index2))))
+			if (!((value == index && location >= index) || (value == index2 && location >= index2) || (value == std::numeric_limits<std::size_t>::max() && (location <= index && location <= index2))))
 			{
 				std::cout << "Failed at counter " << counter << ", index " << index << ", index2 " << index2 << ", value " << value << ", location " << location <<"\n";
 				getchar();

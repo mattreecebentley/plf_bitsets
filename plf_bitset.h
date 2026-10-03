@@ -36,10 +36,6 @@
 #define PLF_ARRAY_CAPACITY_BITS (PLF_ARRAY_CAPACITY * PLF_TYPE_BITWIDTH)
 #define PLF_ARRAY_CAPACITY_BYTES (PLF_ARRAY_CAPACITY * sizeof(storage_type))
 
-// SWAR conversion of bits to characters needs unsigned long long. PLF_CPP11_SUPPORT isn't used as it is not defined for clang with libstdc++:
-#if __cplusplus >= 201103L || defined(_MSC_VER)
-	#define PLF_BITSET_SWAR_STRINGS
-#endif
 
 
 #include <cmath> // log10
@@ -83,9 +79,7 @@ private:
 		#ifdef PLF_CPP20_SUPPORT
 			if constexpr (total_size % PLF_TYPE_BITWIDTH != 0)
 		#endif
-		{
-			buffer[PLF_ARRAY_CAPACITY - 1] &= std::numeric_limits<storage_type>::max() >> (PLF_ARRAY_CAPACITY_BITS - total_size);
-		}
+		buffer[PLF_ARRAY_CAPACITY - 1] &= std::numeric_limits<storage_type>::max() >> (PLF_ARRAY_CAPACITY_BITS - total_size);
 	}
 
 
@@ -254,7 +248,7 @@ public:
 	{
 		if PLF_CONSTEXPR (hardened) check_index_is_within_size(index);
 
-		buffer[index / PLF_TYPE_BITWIDTH] &= ~(storage_type(1) << (index % PLF_TYPE_BITWIDTH));
+		buffer[index / PLF_TYPE_BITWIDTH] &= static_cast<storage_type>(~(storage_type(1) << (index % PLF_TYPE_BITWIDTH)));
 	}
 
 
@@ -607,11 +601,10 @@ public:
 		const size_type word_index = index / PLF_TYPE_BITWIDTH;
 		index %= PLF_TYPE_BITWIDTH;
 
-		const storage_type current_word = buffer[word_index] << (PLF_TYPE_BITWIDTH - index);
-
-		if (index != 0 && current_word != 0)
+		if (index != 0)
 		{
-			return ((word_index * PLF_TYPE_BITWIDTH) + index - 1) - plf::countl_zero(current_word);
+			const storage_type current_word = buffer[word_index] << ((PLF_TYPE_BITWIDTH - 1) - index);
+			if (current_word != 0) return ((word_index * PLF_TYPE_BITWIDTH) + index) - plf::countl_zero(current_word);
 		}
 
 		if (word_index == 0) return std::numeric_limits<size_type>::max();
@@ -1012,57 +1005,6 @@ public:
 
 
 
-private:
-
-	#ifdef PLF_BITSET_SWAR_STRINGS
-		// Writes each bit as a character, 8 bits at a time, with each byte of a 64-bit integer holding one character. The characters are written one byte at a time by shifting, so the result does not depend on the byte order, and compilers merge the 8 stores into one.
-		template <bool most_significant_first, class char_type>
-		void bits_to_chars(char_type * const output, const char_type zero, const char_type one) const PLF_NOEXCEPT
-		{
-			// Byte n of the mask (n = 0 is the least significant byte) keeps bit 7 - n of the source byte when the most significant bit comes first, or bit n otherwise. Byte n of the result becomes character n of the 8 written.
-			// zeros is the zero character in all 8 bytes.
-			const unsigned long long mask = most_significant_first ? 0x0102040810204080ULL : 0x8040201008040201ULL;
-			const unsigned long long zeros = 0x0101010101010101ULL * static_cast<unsigned char>(zero), difference = static_cast<unsigned char>(zero ^ one);
-
-			for (size_type index = 0, end = PLF_ARRAY_CAPACITY; index != end; ++index)
-			{
-				if (buffer[index] == 0) continue; // The string is already filled with zero characters
-
-				const size_type bit_index = index * PLF_TYPE_BITWIDTH, bits = (total_size - bit_index < PLF_TYPE_BITWIDTH) ? total_size - bit_index : PLF_TYPE_BITWIDTH;
-				storage_type value = buffer[index];
-				size_type subindex = 0;
-
-				for (; subindex + 8 <= bits; subindex += 8, value = static_cast<storage_type>(value >> 8))
-				{
-					// Multiplying by 0x0101010101010101 copies the low byte of value into all 8 bytes, and the mask leaves each byte either 0 or a single bit (at most 0x80).
-					// Adding 0x7F to each byte then sets its top bit (0x80) only if the byte was not 0. The largest sum is 0x80 + 0x7F = 0xFF, so nothing carries into the next byte.
-					const unsigned long long spread = ((static_cast<unsigned long long>(value & 0xFF) * 0x0101010101010101ULL) & mask) + 0x7F7F7F7F7F7F7F7FULL;
-					// 0x8080808080808080 keeps the top bit of each byte and >> 7 moves it to the bottom, so each byte is 1 for a set bit and 0 otherwise.
-					// Multiplying by (zero ^ one) turns each 1 into (zero ^ one), again without carries, and XOR-ing with zeros gives zero ^ (zero ^ one) == one for set bits and zero for the rest.
-					const unsigned long long characters = zeros ^ (((spread & 0x8080808080808080ULL) >> 7) * difference);
-					char_type * const destination = output + (most_significant_first ? total_size - (bit_index + subindex + 8) : bit_index + subindex);
-					destination[0] = static_cast<char_type>(characters >> 0);
-					destination[1] = static_cast<char_type>(characters >> 8);
-					destination[2] = static_cast<char_type>(characters >> 16);
-					destination[3] = static_cast<char_type>(characters >> 24);
-					destination[4] = static_cast<char_type>(characters >> 32);
-					destination[5] = static_cast<char_type>(characters >> 40);
-					destination[6] = static_cast<char_type>(characters >> 48);
-					destination[7] = static_cast<char_type>(characters >> 56);
-				}
-
-				for (; subindex != bits; ++subindex, value = static_cast<storage_type>(value >> 1))
-				{
-					output[most_significant_first ? total_size - (bit_index + subindex + 1) : bit_index + subindex] = (value & 1) ? one : zero;
-				}
-			}
-		}
-	#endif
-
-
-
-public:
-
 	#ifdef PLF_CPP11_SUPPORT
 		template <class char_type = char, class traits = std::char_traits<char_type>, class string_allocator_type = std::allocator<char_type> >
 		PLF_CONSTFUNC std::basic_string<char_type, traits, string_allocator_type> to_string(const char_type zero = char_type('0'), char_type one = char_type('1')) const
@@ -1073,18 +1015,18 @@ public:
 		{
 			std::basic_string<char> temp(total_size, zero);
 	#endif
-	#ifdef PLF_BITSET_SWAR_STRINGS
-		#ifdef PLF_CONSTEVAL_SUPPORT
-			if !consteval
-		#endif
-		{
-			if PLF_CONSTEXPR (sizeof(zero) == 1)
+		#ifdef PLF_64BIT_SUPPORT
+			#ifdef PLF_CONSTEVAL_SUPPORT
+				if !consteval
+			#endif
 			{
-				bits_to_chars<true>(&temp[0], zero, one);
-				return temp;
+				if PLF_CONSTEXPR (sizeof(zero) == 1)
+				{
+					bits_to_chars<true, storage_type>(buffer, &temp[0], zero, one, total_size);
+					return temp;
+				}
 			}
-		}
-	#endif
+		#endif
 
 		one -= zero;
 
@@ -1095,12 +1037,12 @@ public:
  				const size_type string_index = index * PLF_TYPE_BITWIDTH;
  				const storage_type value = buffer[index];
 
-				#ifdef PLF_CPP20_SUPPORT // Avoid the branch otherwise
+				#ifdef PLF_CPP20_SUPPORT // Try to avoid the additional branch in the for loop
 					if constexpr (total_size % PLF_TYPE_BITWIDTH == 0)
 					{
 						for (storage_type subindex = 0, sub_end = PLF_TYPE_BITWIDTH; subindex != sub_end; ++subindex)
 						{
-							temp[total_size - (string_index + subindex + 1)] = zero + (((value >> subindex) & storage_type(1)) * one);
+							temp[total_size - (string_index + subindex + 1)] = zero + static_cast<char_type>(((value >> subindex) & storage_type(1)) * one);
 						}
 					}
 					else
@@ -1108,7 +1050,7 @@ public:
 				{
 					for (storage_type subindex = 0, sub_end = PLF_TYPE_BITWIDTH; subindex != sub_end && (string_index + subindex) != total_size; ++subindex)
 					{
-						temp[total_size - (string_index + subindex + 1)] = zero + (((value >> subindex) & storage_type(1)) * one);
+						temp[total_size - (string_index + subindex + 1)] = zero + static_cast<char_type>(((value >> subindex) & storage_type(1)) * one);
 					}
 				}
 			}
@@ -1130,18 +1072,18 @@ public:
 		{
 			std::basic_string<char> temp(total_size, zero);
 	#endif
-	#ifdef PLF_BITSET_SWAR_STRINGS
-		#ifdef PLF_CONSTEVAL_SUPPORT
-			if !consteval
-		#endif
-		{
-			if PLF_CONSTEXPR (sizeof(zero) == 1)
+		#ifdef PLF_64BIT_SUPPORT
+			#ifdef PLF_CONSTEVAL_SUPPORT
+				if !consteval
+			#endif
 			{
-				bits_to_chars<false>(&temp[0], zero, one);
-				return temp;
+				if PLF_CONSTEXPR (sizeof(zero) == 1)
+				{
+					bits_to_chars<false, storage_type>(buffer, &temp[0], zero, one, total_size);
+					return temp;
+				}
 			}
-		}
-	#endif
+		#endif
 
 		one -= zero;
 
@@ -1157,7 +1099,7 @@ public:
 					{
 						for (storage_type subindex = 0, sub_end = PLF_TYPE_BITWIDTH; subindex != sub_end; ++subindex)
 						{
-							temp[string_index + subindex] = zero + (((value >> subindex) & storage_type(1)) * one);
+							temp[string_index + subindex] = zero + static_cast<char_type>(((value >> subindex) & storage_type(1)) * one);
 						}
 					}
 					else
@@ -1165,7 +1107,7 @@ public:
 				{
 					for (storage_type subindex = 0, sub_end = PLF_TYPE_BITWIDTH; subindex != sub_end && (string_index + subindex) != total_size; ++subindex)
 					{
-						temp[string_index + subindex] = zero + (((value >> subindex) & storage_type(1)) * one);
+						temp[string_index + subindex] = zero + static_cast<char_type>(((value >> subindex) & storage_type(1)) * one);
 					}
 				}
 			}
@@ -1288,7 +1230,6 @@ namespace std
 #undef PLF_ARRAY_CAPACITY
 #undef PLF_ARRAY_CAPACITY_BITS
 #undef PLF_ARRAY_CAPACITY_BYTES
-#undef PLF_BITSET_SWAR_STRINGS
 
 #ifdef PLF_BITSET_DEFINES
 	#include "plf_tools_undef.h"
