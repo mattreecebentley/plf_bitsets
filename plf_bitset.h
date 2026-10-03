@@ -64,18 +64,11 @@ private:
 	storage_type buffer[PLF_ARRAY_CAPACITY];
 
 
-	// These two function calls should be optimized out by the compiler (under C++20) if total_size is a multiple of storage_type bitwidth, but if the "if" statement can't be constexpr due to lack of C++20 support, avoid the CPU penalty of the branch instruction and just perform the operation anyway. The idea is that there may be some remainder in the final storage_type which is unused in the bitset. By default we keep this at 0 for all bits, however some operations require them to be 1 in order to perform optimally. For those operations we set the remainder (overflow) to 1, then back to 0 at the end of the function:
+	// set_overflow_to_zero() should be optimised out by the compiler (under C++20) if total_size is a multiple of storage_type bitwidth, but if the "if" statement can't be constexpr due to lack of C++20 support, avoid the CPU penalty of the branch instruction and just perform the operation anyway. The idea is that there may be some remainder in the final storage_type which is unused in the bitset. By default we keep this at 0 for all bits, however some operations require them to be 1 in order to perform optimally. For those operations we use last_word_with_overflow_set(), which returns a copy of the final storage_type with the remainder (overflow) set to 1, so the buffer isn't modified:
 
-	PLF_CONSTFUNC void set_overflow_to_one() PLF_NOEXCEPT
-	{ // If total_size < array bit capacity, set all bits > size to 1
-		#ifdef PLF_CPP20_SUPPORT
-			if constexpr (total_size % PLF_TYPE_BITWIDTH != 0)
-			{
-				buffer[PLF_ARRAY_CAPACITY - 1] |= std::numeric_limits<storage_type>::max() << (PLF_TYPE_BITWIDTH - (PLF_ARRAY_CAPACITY_BITS - total_size));
-			}
-		#else // Can't remove the code if total_size % PLF_TYPE_BITWIDTH == 0, so avoid the branch instead:
-			buffer[PLF_ARRAY_CAPACITY - 1] |= static_cast<storage_type>(~(std::numeric_limits<storage_type>::max() >> (PLF_ARRAY_CAPACITY_BITS - total_size))); // very slightly slower op based on benchmarking
-		#endif
+	PLF_CONSTFUNC storage_type last_word_with_overflow_set() const PLF_NOEXCEPT
+	{ // Returns the final storage_type with all bits > size set to 1, without modifying the buffer
+		return static_cast<storage_type>(buffer[PLF_ARRAY_CAPACITY - 1] | ~(std::numeric_limits<storage_type>::max() >> (PLF_ARRAY_CAPACITY_BITS - total_size)));
 	}
 
 
@@ -319,26 +312,19 @@ public:
 
 
 
-	PLF_CONSTFUNC bool all() PLF_NOEXCEPT
+	PLF_CONSTFUNC bool all() const PLF_NOEXCEPT
 	{
-		set_overflow_to_one();
-
-		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current)
+		for (size_type current = 0, end = PLF_ARRAY_CAPACITY - 1; current != end; ++current)
 		{
-			if (buffer[current] != std::numeric_limits<storage_type>::max())
-			{
-				set_overflow_to_zero();
-				return false;
-			}
+			if (buffer[current] != std::numeric_limits<storage_type>::max()) return false;
 		}
 
-		set_overflow_to_zero();
-		return true;
+		return last_word_with_overflow_set() == std::numeric_limits<storage_type>::max();
 	}
 
 
 
-	PLF_CONSTFUNC bool all_range(const size_type begin, const size_type end)
+	PLF_CONSTFUNC bool all_range(const size_type begin, const size_type end) const
 	{
 		if PLF_CONSTEXPR (hardened)
 		{
@@ -354,8 +340,6 @@ public:
 			return false;
 		}
 
-		set_overflow_to_one();
-
 		const size_type begin_type_index = begin / PLF_TYPE_BITWIDTH, end_type_index = (end - 1) / PLF_TYPE_BITWIDTH, begin_subindex = begin % PLF_TYPE_BITWIDTH, distance_to_end_storage = (PLF_TYPE_BITWIDTH - (end % PLF_TYPE_BITWIDTH)) % PLF_TYPE_BITWIDTH;
 
 		if (begin_type_index != end_type_index) // ie. if first and last bit to be set are not in the same storage_type unit
@@ -363,7 +347,6 @@ public:
 			// Check first storage_type:
 			if ((buffer[begin_type_index] | ~(std::numeric_limits<storage_type>::max() << begin_subindex)) != std::numeric_limits<storage_type>::max())
 			{
-				set_overflow_to_zero();
 				return false;
 			}
 
@@ -372,7 +355,6 @@ public:
 			{
 				if (buffer[current] != std::numeric_limits<storage_type>::max())
 				{
-					set_overflow_to_zero();
 					return false;
 				}
 			}
@@ -380,7 +362,6 @@ public:
 			// Check last storage_type:
 			if ((buffer[end_type_index] | ~(std::numeric_limits<storage_type>::max() >> distance_to_end_storage)) != std::numeric_limits<storage_type>::max())
 			{
-				set_overflow_to_zero();
 				return false;
 			}
 		}
@@ -388,12 +369,10 @@ public:
 		{
 			if ((buffer[begin_type_index] | ~((std::numeric_limits<storage_type>::max() << begin_subindex) & (std::numeric_limits<storage_type>::max() >> distance_to_end_storage))) != std::numeric_limits<storage_type>::max())
 			{
-				set_overflow_to_zero();
 				return false;
 			}
 		}
 
-		set_overflow_to_zero();
 		return true;
 	}
 
@@ -549,27 +528,20 @@ private:
 
 
 
-	PLF_CONSTFUNC size_type search_zero_forwards(size_type word_index) PLF_NOEXCEPT
-	{
-		const size_type end = PLF_ARRAY_CAPACITY;
-		size_type index = std::numeric_limits<size_type>::max();
-
-		do
+	PLF_CONSTFUNC size_type search_zero_forwards(size_type word_index) const PLF_NOEXCEPT
+	{ // The unused bits in the final storage_type are always 0, so it is checked with them set to 1 instead
+		for (const size_type last = PLF_ARRAY_CAPACITY - 1; word_index != last; ++word_index)
 		{
-			if (buffer[word_index] != std::numeric_limits<storage_type>::max())
-			{
-				index = (word_index * PLF_TYPE_BITWIDTH) + plf::countr_one(buffer[word_index]);
-				break;
-			}
-		} while (++word_index != end);
+			if (buffer[word_index] != std::numeric_limits<storage_type>::max()) return (word_index * PLF_TYPE_BITWIDTH) + plf::countr_one(buffer[word_index]);
+		}
 
-		set_overflow_to_zero();
-		return index;
+		const storage_type last_word = last_word_with_overflow_set();
+		return (last_word != std::numeric_limits<storage_type>::max()) ? (word_index * PLF_TYPE_BITWIDTH) + plf::countr_one(last_word) : std::numeric_limits<size_type>::max();
 	}
 
 
 
-	PLF_CONSTFUNC size_type search_zero_backwards(size_type word_index) PLF_NOEXCEPT
+	PLF_CONSTFUNC size_type search_zero_backwards(size_type word_index) const PLF_NOEXCEPT
 	{
 		size_type index = std::numeric_limits<size_type>::max();
 
@@ -582,7 +554,6 @@ private:
 			}
 		} while (word_index-- != 0);
 
-		set_overflow_to_zero();
 		return index;
 	}
 
@@ -645,18 +616,16 @@ public:
 
 
 
-	PLF_CONSTFUNC size_type first_zero() PLF_NOEXCEPT
+	PLF_CONSTFUNC size_type first_zero() const PLF_NOEXCEPT
 	{
-		set_overflow_to_one();
 		return search_zero_forwards(0);
 	}
 
 
 
-	PLF_CONSTFUNC size_type next_zero(size_type index) PLF_NOEXCEPT
+	PLF_CONSTFUNC size_type next_zero(size_type index) const PLF_NOEXCEPT
 	{
 		if (index >= total_size) return std::numeric_limits<size_type>::max();
-		set_overflow_to_one();
 
 		size_type word_index = index / PLF_TYPE_BITWIDTH;
 		index %= PLF_TYPE_BITWIDTH;
@@ -665,13 +634,16 @@ public:
 		if (current_word != std::numeric_limits<storage_type>::max())
 		{
 			index = (word_index * PLF_TYPE_BITWIDTH) + plf::countr_one(current_word);
-			set_overflow_to_zero();
+			if PLF_CONSTEXPR (total_size % PLF_TYPE_BITWIDTH != 0) // The unused bits in the final storage_type are always 0, so a zero found there is not in the bitset
+			{
+				if (index >= total_size) return std::numeric_limits<size_type>::max();
+			}
+
 			return index;
 		}
 
 		if (++word_index == PLF_ARRAY_CAPACITY)
 		{
-			set_overflow_to_zero();
 			return std::numeric_limits<size_type>::max();
 		}
 
@@ -680,18 +652,21 @@ public:
 
 
 
-	PLF_CONSTFUNC size_type last_zero() PLF_NOEXCEPT
+	PLF_CONSTFUNC size_type last_zero() const PLF_NOEXCEPT
 	{
-		set_overflow_to_one();
-		return search_zero_backwards(PLF_ARRAY_CAPACITY - 1);
+		const storage_type last_word = last_word_with_overflow_set();
+
+		if (last_word != std::numeric_limits<storage_type>::max()) return ((PLF_ARRAY_CAPACITY * PLF_TYPE_BITWIDTH) - plf::countl_one(last_word)) - 1;
+		if PLF_CONSTEXPR (PLF_ARRAY_CAPACITY == 1) return std::numeric_limits<size_type>::max();
+
+		return search_zero_backwards(PLF_ARRAY_CAPACITY - 2);
 	}
 
 
 
-	PLF_CONSTFUNC size_type prev_zero(size_type index) PLF_NOEXCEPT
+	PLF_CONSTFUNC size_type prev_zero(size_type index) const PLF_NOEXCEPT
 	{
 		if (index >= total_size) return std::numeric_limits<size_type>::max();
-		set_overflow_to_one();
 
 		const size_type word_index = index / PLF_TYPE_BITWIDTH;
 		index %= PLF_TYPE_BITWIDTH;
@@ -701,13 +676,11 @@ public:
 		if (current_word != std::numeric_limits<storage_type>::max())
 		{
 			index = (((word_index + 1) * PLF_TYPE_BITWIDTH) - plf::countl_one(current_word)) - 1;
-			set_overflow_to_zero();
 			return index;
 		}
 
 		if (word_index == 0)
 		{
-			set_overflow_to_zero();
 			return std::numeric_limits<size_type>::max();
 		}
 
