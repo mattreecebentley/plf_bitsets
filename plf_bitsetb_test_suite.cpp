@@ -27,6 +27,43 @@ void failpass(const char *test_type, bool condition)
 
 
 template <std::size_t total_size, typename storage_type>
+void const_query_test(const char *test_type)
+{
+	plf::bitsetb<false, storage_type> values(total_size);
+	const plf::bitsetb<false, storage_type> &const_values = values;
+	// total_size must be at least 8. Bits 3 and total_size - 2 are reset, and also bit 'middle' if there is a middle storage_type:
+	const std::size_t none = std::numeric_limits<std::size_t>::max(), storage_bits = sizeof(storage_type) * 8, middle = storage_bits + 5;
+	const bool has_middle_word = (total_size - 2) / storage_bits >= 2; // ie. at least 3 storage_types, and total_size - 2 is in the 3rd or later one
+
+	values.set();
+	const bool all_set_ok = const_values.all() && const_values.all_range(0, total_size) && const_values.all_range(0, total_size - 1);
+	const bool search_set_ok = const_values.first_zero() == none && const_values.last_zero() == none && const_values.next_zero(0) == none && const_values.prev_zero(total_size - 1) == none;
+	const bool out_of_range_ok = const_values.next_zero(total_size) == none && const_values.prev_zero(total_size) == none;
+
+	values.reset(3);
+	values.reset(total_size - 2);
+	if (has_middle_word) values.reset(middle);
+
+	const std::size_t zero_after_3 = (has_middle_word) ? middle : total_size - 2, zero_before_last = (has_middle_word) ? middle : 3;
+
+	const bool all_ok = !const_values.all() && const_values.count() == total_size - ((has_middle_word) ? 3 : 2);
+	const bool all_range_ok = const_values.all_range(4, zero_after_3) && !const_values.all_range(4, total_size) && !const_values.all_range(0, total_size - 1) && !const_values.all_range(0, total_size) && const_values.all_range(total_size - 1, total_size);
+	const bool all_range_middle_ok = !has_middle_word || (!const_values.all_range(4, total_size - 2) && !const_values.all_range(middle + 1, total_size) && const_values.all_range(middle + 1, total_size - 2)); // fails on a middle storage_type, then on the final one
+	const bool first_last_zero_ok = const_values.first_zero() == 3 && const_values.last_zero() == total_size - 2;
+	const bool next_zero_ok = const_values.next_zero(4) == zero_after_3 && const_values.next_zero(zero_after_3 + 1) == ((has_middle_word) ? total_size - 2 : none);
+	const bool prev_zero_ok = const_values.prev_zero(total_size - 3) == zero_before_last && const_values.prev_zero(zero_before_last - 1) == ((has_middle_word) ? 3 : none) && const_values.prev_zero(2) == none;
+
+	if (has_middle_word) values.set(middle); // so that searches have to skip a whole storage_type to find the next zero
+	const bool skip_word_ok = !has_middle_word || (const_values.next_zero(4) == total_size - 2 && const_values.prev_zero(total_size - 3) == 3);
+
+	failpass(test_type, all_set_ok && search_set_ok && out_of_range_ok && all_ok && all_range_ok && all_range_middle_ok && first_last_zero_ok && next_zero_ok && prev_zero_ok && skip_word_ok);
+}
+
+
+
+
+
+template <std::size_t total_size, typename storage_type>
 void overflow_restore_test(const char *test_type)
 {
 	plf::bitsetb<false, storage_type> values(total_size);
@@ -40,6 +77,70 @@ void overflow_restore_test(const char *test_type)
 	const bool prev_zero_ok = values.count() == total_size;
 
 	failpass(test_type, next_zero_ok && prev_zero_ok);
+}
+
+
+
+
+
+template <std::size_t total_words, typename storage_type>
+void range_end_aligned_test(const char *test_type)
+{
+	const std::size_t word = sizeof(storage_type) * 8, total_size = total_words * word;
+	plf::bitsetb<false, storage_type> values(total_size);
+	values.reset();
+
+	values.set_range(0, word);
+	const bool set_ok = values.count() == word && values.count_range(0, word) == word && values.all_range(0, word);
+
+	values.set_range(word, total_size);
+	const bool set_multi_ok = values.count() == total_size && values.count_range(1, total_size) == total_size - 1 && values.all_range(1, total_size);
+
+	values.reset_range(0, word);
+	values.reset_range(word + 1, total_size);
+	const bool reset_ok = values.count() == 1 && !values.any_range(0, word) && !values.any_range(word + 1, total_size) && values.any_range(0, word + 1);
+
+	failpass(test_type, set_ok && set_multi_ok && reset_ok);
+}
+
+
+
+
+
+template <typename storage_type>
+void all_range_narrow_test(const char *test_type)
+{
+	const std::size_t word = sizeof(storage_type) * 8;
+	plf::bitsetb<false, storage_type> values(word * 2);
+	values.set();
+
+	const bool set_ok = values.all_range(0, word / 2) && values.all_range(1, word + 3);
+
+	values.reset(word / 2 - 1);
+
+	const bool reset_ok = !values.all_range(0, word / 2) && !values.all_range(1, word + 3) && values.all_range(word / 2, word + 3);
+
+	failpass(test_type, set_ok && reset_ok);
+}
+
+
+
+
+
+template <typename storage_type>
+void count_range_narrow_test(const char *test_type)
+{
+	const std::size_t word = sizeof(storage_type) * 8;
+	plf::bitsetb<false, storage_type> values(word * 2);
+	values.set();
+
+	const bool set_ok = values.count_range(1, word / 2) == word / 2 - 1 && values.count_range(1, word + 3) == word + 2;
+
+	values.reset(word / 2 - 1);
+
+	const bool reset_ok = values.count_range(1, word / 2) == word / 2 - 2 && values.count_range(1, word + 3) == word + 1;
+
+	failpass(test_type, set_ok && reset_ok);
 }
 
 
@@ -133,9 +234,21 @@ int main()
 		to_string_test<77, unsigned char>("to_string/to_rstring test, 77 bits/unsigned char");
 		to_string_test<sizeof(std::size_t) * 8, std::size_t>("to_string/to_rstring test, one word/size_t");
 		to_string_test<200, std::size_t>("to_string/to_rstring test, 200 bits/size_t");
+		range_end_aligned_test<3, unsigned int>("Word-aligned range end test/unsigned int");
+		range_end_aligned_test<3, std::size_t>("Word-aligned range end test/size_t");
+		all_range_narrow_test<unsigned char>("all_range narrow storage test/unsigned char");
+		all_range_narrow_test<unsigned short>("all_range narrow storage test/unsigned short");
+		count_range_narrow_test<unsigned char>("count_range narrow storage test/unsigned char");
+		count_range_narrow_test<unsigned short>("count_range narrow storage test/unsigned short");
 		overflow_restore_test<2, unsigned int>("Overflow restore test, 2 bits/unsigned int");
 		overflow_restore_test<sizeof(unsigned int) * 8 + 1, unsigned int>("Overflow restore test, one word plus one/unsigned int");
 		overflow_restore_test<sizeof(std::size_t) * 16 - 1, std::size_t>("Overflow restore test, two words less one/size_t");
+		const_query_test<sizeof(unsigned int) * 8 + 7, unsigned int>("Const query test, one word plus seven/unsigned int");
+		const_query_test<sizeof(std::size_t) * 16 - 1, std::size_t>("Const query test, two words less one/size_t");
+		const_query_test<sizeof(std::size_t) * 16, std::size_t>("Const query test, exact multiple/size_t");
+		const_query_test<10, unsigned int>("Const query test, one word/unsigned int");
+		const_query_test<sizeof(std::size_t) * 24 - 1, std::size_t>("Const query test, three words less one/size_t");
+		const_query_test<sizeof(std::size_t) * 24, std::size_t>("Const query test, three words, exact multiple/size_t");
 
 		values.reset();
 
