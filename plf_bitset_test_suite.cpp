@@ -191,6 +191,17 @@ void exact_multiple_test(const char *test_type)
 
 
 
+template <std::size_t total_size, typename storage_type>
+void memory_test(const char *test_type)
+{ // plf::bitset holds its buffer inline, so its memory use is its size
+	const plf::bitset<total_size, storage_type> values;
+	failpass(test_type, values.memory() == sizeof(values));
+}
+
+
+
+
+
 int main()
 {
 	{
@@ -248,6 +259,8 @@ int main()
 		all_range_narrow_test<unsigned short>("all_range narrow storage test/unsigned short");
 		count_range_narrow_test<unsigned char>("count_range narrow storage test/unsigned char");
 		count_range_narrow_test<unsigned short>("count_range narrow storage test/unsigned short");
+		memory_test<10, unsigned char>("memory() test, 10 bits/unsigned char");
+		memory_test<1000, std::size_t>("memory() test, 1000 bits/size_t");
 		overflow_restore_test<2, unsigned int>("Overflow restore test, 2 bits/unsigned int");
 		overflow_restore_test<sizeof(unsigned int) * 8 + 1, unsigned int>("Overflow restore test, one word plus one/unsigned int");
 		overflow_restore_test<sizeof(std::size_t) * 16 - 1, std::size_t>("Overflow restore test, two words less one/size_t");

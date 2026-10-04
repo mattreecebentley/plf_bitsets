@@ -717,7 +717,7 @@ public:
 
 	PLF_CONSTFUNC size_type memory() const PLF_NOEXCEPT
  	{
- 		return sizeof(*this) + PLF_ARRAY_CAPACITY_BYTES;
+ 		return sizeof(*this); // the buffer is a member array, so sizeof(*this) already includes it
  	}
 
 
