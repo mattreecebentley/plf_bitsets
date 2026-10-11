@@ -764,11 +764,12 @@ public:
 			std::uninitialized_copy(buffer, buffer + PLF_ARRAY_CAPACITY_CALC((new_size > total_size) ? total_size : new_size), new_buffer);
 			PLF_DEALLOCATE(allocator_type, *this, buffer, PLF_ARRAY_CAPACITY);
 			buffer = new_buffer;
-			set_overflow_to_zero();
 		}
 
 		if (new_size > total_size) reset_range(total_size, new_size);
 		total_size = new_size;
+
+		if (total_size != 0) set_overflow_to_zero(); // Only once total_size is the new size: with the old size this wrote past the end of a smaller new buffer, and left the bits past the new size set
  	}
 
 

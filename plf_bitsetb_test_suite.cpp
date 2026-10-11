@@ -698,6 +698,25 @@ int main()
 	}
 
 
+	{ // change_size() to a smaller size must only touch the new, smaller buffer, and clear the bits past the new size
+		plf::bitsetb<> shrink_values(200);
+		shrink_values.set();
+		shrink_values.change_size(10);
+		failpass("change_size shrink test", shrink_values.count() == 10 && shrink_values.all());
+
+		std::size_t supplied_buffer[4];
+		plf::bitsetb<true> supplied_values(200, supplied_buffer);
+		supplied_values.set();
+		supplied_values.change_size(10);
+		failpass("change_size shrink with a supplied buffer test", supplied_values.count() == 10 && supplied_values.all());
+
+		plf::bitsetb<> empty_values(200);
+		empty_values.set();
+		empty_values.change_size(0);
+		failpass("change_size to zero test", empty_values.count() == 0 && empty_values.size() == 0);
+	}
+
+
 	printf("Press ENTER to quit");
 	getchar();
 
