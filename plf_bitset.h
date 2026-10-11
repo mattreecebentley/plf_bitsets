@@ -69,6 +69,13 @@ private:
 
 	PLF_CONSTFUNC storage_type last_word_with_overflow_set() const PLF_NOEXCEPT
 	{ // Returns the final storage_type with all bits > size set to 1, without modifying the buffer
+		#ifdef PLF_CPP20_SUPPORT
+			if constexpr (total_size % PLF_TYPE_BITWIDTH == 0)
+			{
+				return buffer[PLF_ARRAY_CAPACITY - 1];
+			}
+			else
+		#endif
 		return static_cast<storage_type>(buffer[PLF_ARRAY_CAPACITY - 1] | ~(std::numeric_limits<storage_type>::max() >> (PLF_ARRAY_CAPACITY_BITS - total_size)));
 	}
 
