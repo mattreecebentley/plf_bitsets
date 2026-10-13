@@ -647,10 +647,7 @@ public:
 			return (index < total_size) ? index : std::numeric_limits<size_type>::max(); // The unused bits in the final storage_type are always 0, so a zero found there is not in the bitset
 		}
 
-		if (++word_index == PLF_ARRAY_CAPACITY)
-		{
-			return std::numeric_limits<size_type>::max();
-		}
+		if (++word_index == PLF_ARRAY_CAPACITY) return std::numeric_limits<size_type>::max();
 
 		return search_zero_forwards(word_index);
 	}
@@ -680,14 +677,10 @@ public:
 
 		if (current_word != std::numeric_limits<storage_type>::max())
 		{
-			index = (((word_index + 1) * PLF_TYPE_BITWIDTH) - plf::countl_one(current_word)) - 1;
-			return index;
+			return (((word_index + 1) * PLF_TYPE_BITWIDTH) - plf::countl_one(current_word)) - 1;
 		}
 
-		if (word_index == 0)
-		{
-			return std::numeric_limits<size_type>::max();
-		}
+		if (word_index == 0) return std::numeric_limits<size_type>::max();
 
 		return search_zero_backwards(word_index - 1);
 	}
