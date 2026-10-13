@@ -549,18 +549,12 @@ private:
 
 	PLF_CONSTFUNC size_type search_zero_backwards(size_type word_index) const PLF_NOEXCEPT
 	{
-		size_type index = std::numeric_limits<size_type>::max();
-
 		do
 		{
-			if (buffer[word_index] != std::numeric_limits<storage_type>::max())
-			{
-				index = (((word_index + 1) * PLF_TYPE_BITWIDTH) - plf::countl_one(buffer[word_index])) - 1;
-				break;
-			}
+			if (buffer[word_index] != std::numeric_limits<storage_type>::max()) return (((word_index + 1) * PLF_TYPE_BITWIDTH) - plf::countl_one(buffer[word_index])) - 1;
 		} while (word_index-- != 0);
 
-		return index;
+		return std::numeric_limits<size_type>::max();
 	}
 
 
@@ -576,7 +570,7 @@ public:
 
 	PLF_CONSTFUNC size_type next_one(size_type index) const PLF_NOEXCEPT
 	{
-		if (index >= total_size) return std::numeric_limits<size_type>::max();
+		if PLF_CONSTEXPR (hardened) check_index_is_within_size(index);
 
 		size_type word_index = index / PLF_TYPE_BITWIDTH;
 		index %= PLF_TYPE_BITWIDTH; // convert to sub-index within word
@@ -603,7 +597,7 @@ public:
 
 	PLF_CONSTFUNC size_type prev_one(size_type index) const PLF_NOEXCEPT
 	{
-		if (index >= total_size) return std::numeric_limits<size_type>::max();
+		if PLF_CONSTEXPR (hardened) check_index_is_within_size(index);
 
 		const size_type word_index = index / PLF_TYPE_BITWIDTH;
 		index %= PLF_TYPE_BITWIDTH;
@@ -630,7 +624,7 @@ public:
 
 	PLF_CONSTFUNC size_type next_zero(size_type index) const PLF_NOEXCEPT
 	{
-		if (index >= total_size) return std::numeric_limits<size_type>::max();
+		if PLF_CONSTEXPR (hardened) check_index_is_within_size(index);
 
 		size_type word_index = index / PLF_TYPE_BITWIDTH;
 		index %= PLF_TYPE_BITWIDTH;
@@ -639,6 +633,7 @@ public:
 		if (current_word != std::numeric_limits<storage_type>::max())
 		{
 			index = (word_index * PLF_TYPE_BITWIDTH) + plf::countr_one(current_word);
+
 			if PLF_CONSTEXPR (total_size % PLF_TYPE_BITWIDTH != 0) // The unused bits in the final storage_type are always 0, so a zero found there is not in the bitset
 			{
 				if (index >= total_size) return std::numeric_limits<size_type>::max();
@@ -671,7 +666,7 @@ public:
 
 	PLF_CONSTFUNC size_type prev_zero(size_type index) const PLF_NOEXCEPT
 	{
-		if (index >= total_size) return std::numeric_limits<size_type>::max();
+		if PLF_CONSTEXPR (hardened) check_index_is_within_size(index);
 
 		const size_type word_index = index / PLF_TYPE_BITWIDTH;
 		index %= PLF_TYPE_BITWIDTH;
@@ -680,14 +675,10 @@ public:
 
 		if (current_word != std::numeric_limits<storage_type>::max())
 		{
-			index = (((word_index + 1) * PLF_TYPE_BITWIDTH) - plf::countl_one(current_word)) - 1;
-			return index;
+			return (((word_index + 1) * PLF_TYPE_BITWIDTH) - plf::countl_one(current_word)) - 1;
 		}
 
-		if (word_index == 0)
-		{
-			return std::numeric_limits<size_type>::max();
-		}
+		if (word_index == 0) return std::numeric_limits<size_type>::max();
 
 		return search_zero_backwards(word_index - 1);
 	}

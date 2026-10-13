@@ -567,18 +567,12 @@ private:
 
 	PLF_CONSTFUNC size_type search_zero_backwards(size_type word_index) const PLF_NOEXCEPT
 	{
-		size_type index = std::numeric_limits<size_type>::max();
-
 		do
 		{
-			if (buffer[word_index] != std::numeric_limits<storage_type>::max())
-			{
-				index = (((word_index + 1) * PLF_TYPE_BITWIDTH) - plf::countl_one(buffer[word_index])) - 1;
-				break;
-			}
+			if (buffer[word_index] != std::numeric_limits<storage_type>::max()) return (((word_index + 1) * PLF_TYPE_BITWIDTH) - plf::countl_one(buffer[word_index])) - 1;
 		} while (word_index-- != 0);
 
-		return index;
+		return std::numeric_limits<size_type>::max();;
 	}
 
 
@@ -594,7 +588,7 @@ public:
 
 	PLF_CONSTFUNC size_type next_one(size_type index) const PLF_NOEXCEPT // note: we are searching from current position, not current position + 1
 	{
-		if (index >= total_size) return std::numeric_limits<size_type>::max();
+		if PLF_CONSTEXPR (hardened) check_index_is_within_size(index);
 
 		// Search within current buffer word:
 		size_type word_index = index / PLF_TYPE_BITWIDTH;
@@ -617,7 +611,7 @@ public:
 
 	PLF_CONSTFUNC size_type prev_one(size_type index) const PLF_NOEXCEPT
 	{
-		if (index >= total_size) return std::numeric_limits<size_type>::max();
+		if PLF_CONSTEXPR (hardened) check_index_is_within_size(index);
 
 		size_type word_index = index / PLF_TYPE_BITWIDTH;
 		index %= PLF_TYPE_BITWIDTH;
@@ -640,7 +634,7 @@ public:
 
 	PLF_CONSTFUNC size_type next_zero(size_type index) const PLF_NOEXCEPT // note: we are searching from current position, not current position + 1
 	{
-		if (index >= total_size) return std::numeric_limits<size_type>::max();
+		if PLF_CONSTEXPR (hardened) check_index_is_within_size(index);
 
 		// Search within current buffer word:
 		size_type word_index = index / PLF_TYPE_BITWIDTH;
@@ -677,7 +671,7 @@ public:
 
 	PLF_CONSTFUNC size_type prev_zero(size_type index) const PLF_NOEXCEPT
 	{
-		if (index >= total_size) return std::numeric_limits<size_type>::max();
+		if PLF_CONSTEXPR (hardened) check_index_is_within_size(index);
 
 		size_type word_index = index / PLF_TYPE_BITWIDTH;
 		index %= PLF_TYPE_BITWIDTH;

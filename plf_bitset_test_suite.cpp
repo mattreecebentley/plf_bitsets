@@ -42,7 +42,6 @@ void const_query_test(const char *test_type)
 	values.set();
 	const bool all_set_ok = const_values.all() && const_values.all_range(0, total_size) && const_values.all_range(0, total_size - 1);
 	const bool search_set_ok = const_values.first_zero() == none && const_values.last_zero() == none && const_values.next_zero(0) == none && const_values.prev_zero(total_size - 1) == none;
-	const bool out_of_range_ok = const_values.next_zero(total_size) == none && const_values.prev_zero(total_size) == none;
 
 	values.reset(3);
 	values.reset(total_size - 2);
@@ -60,7 +59,7 @@ void const_query_test(const char *test_type)
 	if (has_middle_word) values.set(middle); // so that searches have to skip a whole storage_type to find the next zero
 	const bool skip_word_ok = !has_middle_word || (const_values.next_zero(4) == total_size - 2 && const_values.prev_zero(total_size - 3) == 3);
 
-	failpass(test_type, all_set_ok && search_set_ok && out_of_range_ok && all_ok && all_range_ok && all_range_middle_ok && first_last_zero_ok && next_zero_ok && prev_zero_ok && skip_word_ok);
+	failpass(test_type, all_set_ok && search_set_ok && all_ok && all_range_ok && all_range_middle_ok && first_last_zero_ok && next_zero_ok && prev_zero_ok && skip_word_ok);
 }
 
 
