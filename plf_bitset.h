@@ -568,7 +568,7 @@ public:
 
 
 
-	PLF_CONSTFUNC size_type next_one(size_type index) const PLF_NOEXCEPT
+	PLF_CONSTFUNC size_type next_one(size_type index) const
 	{
 		if PLF_CONSTEXPR (hardened) check_index_is_within_size(index);
 
@@ -595,7 +595,7 @@ public:
 
 
 
-	PLF_CONSTFUNC size_type prev_one(size_type index) const PLF_NOEXCEPT
+	PLF_CONSTFUNC size_type prev_one(size_type index) const
 	{
 		if PLF_CONSTEXPR (hardened) check_index_is_within_size(index);
 
@@ -622,7 +622,7 @@ public:
 
 
 
-	PLF_CONSTFUNC size_type next_zero(size_type index) const PLF_NOEXCEPT
+	PLF_CONSTFUNC size_type next_zero(size_type index) const
 	{
 		if PLF_CONSTEXPR (hardened) check_index_is_within_size(index);
 
@@ -664,7 +664,7 @@ public:
 
 
 
-	PLF_CONSTFUNC size_type prev_zero(size_type index) const PLF_NOEXCEPT
+	PLF_CONSTFUNC size_type prev_zero(size_type index) const
 	{
 		if PLF_CONSTEXPR (hardened) check_index_is_within_size(index);
 
