@@ -86,7 +86,7 @@ private:
 		#ifdef PLF_CPP20_SUPPORT
 			if constexpr (total_size % PLF_TYPE_BITWIDTH != 0)
 		#endif
-		buffer[PLF_ARRAY_CAPACITY - 1] &= std::numeric_limits<storage_type>::max() >> (PLF_ARRAY_CAPACITY_BITS - total_size);
+		buffer[PLF_ARRAY_CAPACITY - 1] &= static_cast<storage_type>(std::numeric_limits<storage_type>::max() >> (PLF_ARRAY_CAPACITY_BITS - total_size));
 	}
 
 
@@ -602,12 +602,9 @@ public:
 		const size_type word_index = index / PLF_TYPE_BITWIDTH;
 		index %= PLF_TYPE_BITWIDTH;
 
-		if (index != 0)
-		{
-			const storage_type current_word = buffer[word_index] << ((PLF_TYPE_BITWIDTH - 1) - index);
-			if (current_word != 0) return ((word_index * PLF_TYPE_BITWIDTH) + index) - plf::countl_zero(current_word);
-		}
+		const storage_type current_word = buffer[word_index] << ((PLF_TYPE_BITWIDTH - 1) - index);
 
+		if (current_word != 0) return ((word_index * PLF_TYPE_BITWIDTH) + index) - plf::countl_zero(current_word);
 		if (word_index == 0) return std::numeric_limits<size_type>::max();
 
 		return search_one_backwards(word_index - 1);
@@ -715,7 +712,7 @@ public:
 
 	PLF_CONSTFUNC size_type memory() const PLF_NOEXCEPT
  	{
- 		return sizeof(*this); // the buffer is a member array, so sizeof(*this) already includes it
+ 		return sizeof(*this);
  	}
 
 
@@ -730,8 +727,8 @@ public:
 
 	PLF_CONSTFUNC bitset operator & (const bitset& source) const PLF_NOEXCEPT
 	{
-		bitset result;
-		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) result.buffer[current] = buffer[current] & source.buffer[current];
+		bitset result(*this);
+		result &= source;
 		return result;
 	}
 
@@ -747,8 +744,8 @@ public:
 
 	PLF_CONSTFUNC bitset operator | (const bitset& source) const PLF_NOEXCEPT
 	{
-		bitset result;
-		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) result.buffer[current] = buffer[current] | source.buffer[current];
+		bitset result(*this);
+		result |= source;
 		return result;
 	}
 
@@ -764,8 +761,8 @@ public:
 
 	PLF_CONSTFUNC bitset operator ^ (const bitset& source) const PLF_NOEXCEPT
 	{
-		bitset result;
-		for (size_type current = 0, end = PLF_ARRAY_CAPACITY; current != end; ++current) result.buffer[current] = buffer[current] ^ source.buffer[current];
+		bitset result(*this);
+		result ^= source;
 		return result;
 	}
 
@@ -1009,8 +1006,9 @@ public:
 		{
 			std::basic_string<char_type, traits, string_allocator_type> temp(total_size, zero);
 	#else
-		PLF_CONSTFUNC std::basic_string<char> to_string(const char zero = char('0'), char one = char('1')) const
+		std::basic_string<char> to_string(const char zero = char('0'), char one = char('1')) const
 		{
+			typedef char char_type;
 			std::basic_string<char> temp(total_size, zero);
 	#endif
 		#ifdef PLF_64BIT_SUPPORT
@@ -1066,8 +1064,9 @@ public:
 		{
 			std::basic_string<char_type, traits, string_allocator_type> temp(total_size, zero);
 	#else
-		PLF_CONSTFUNC std::basic_string<char> to_rstring(const char zero = char('0'), char one = char('1')) const
+		std::basic_string<char> to_rstring(const char zero = char('0'), char one = char('1')) const
 		{
+			typedef char char_type;
 			std::basic_string<char> temp(total_size, zero);
 	#endif
 		#ifdef PLF_64BIT_SUPPORT

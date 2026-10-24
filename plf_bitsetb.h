@@ -1057,8 +1057,9 @@ public:
 		{
 			std::basic_string<char_type, traits, string_allocator_type> temp(total_size, zero);
 	#else
-		PLF_CONSTFUNC std::basic_string<char> to_string(const char zero = char('0'), char one = char('1')) const
+		std::basic_string<char> to_string(const char zero = char('0'), char one = char('1')) const
 		{
+			typedef char char_type;
 			std::basic_string<char> temp(total_size, zero);
 	#endif
 		#ifdef PLF_64BIT_SUPPORT
@@ -1102,8 +1103,9 @@ public:
 		{
 			std::basic_string<char_type, traits, string_allocator_type> temp(total_size, zero);
 	#else
-		PLF_CONSTFUNC std::basic_string<char> to_rstring(const char zero = char('0'), char one = char('1')) const
+		std::basic_string<char> to_rstring(const char zero = char('0'), char one = char('1')) const
 		{
+			typedef char char_type;
 			std::basic_string<char> temp(total_size, zero);
 	#endif
 		#ifdef PLF_64BIT_SUPPORT
