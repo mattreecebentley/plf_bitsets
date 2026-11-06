@@ -1053,7 +1053,7 @@ public:
 
 	#ifdef PLF_CPP11_SUPPORT
 		template <class char_type = char, class traits = std::char_traits<char_type>, class string_allocator_type = std::allocator<char_type> >
-		PLF_CONSTFUNC std::basic_string<char_type, traits, string_allocator_type> to_string(const char_type zero = char_type('0'), char_type one = char_type('1'))
+		PLF_CONSTFUNC std::basic_string<char_type, traits, string_allocator_type> to_string(const char_type zero = char_type('0'), char_type one = char_type('1')) const
 		{
 			std::basic_string<char_type, traits, string_allocator_type> temp(total_size, zero);
 	#else
@@ -1099,7 +1099,7 @@ public:
 
 	#ifdef PLF_CPP11_SUPPORT
 		template <class char_type = char, class traits = std::char_traits<char_type>, class string_allocator_type = std::allocator<char_type> >
-		PLF_CONSTFUNC std::basic_string<char_type, traits, string_allocator_type> to_rstring(const char_type zero = char_type('0'), char_type one = char_type('1'))
+		PLF_CONSTFUNC std::basic_string<char_type, traits, string_allocator_type> to_rstring(const char_type zero = char_type('0'), char_type one = char_type('1')) const
 		{
 			std::basic_string<char_type, traits, string_allocator_type> temp(total_size, zero);
 	#else

@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <sstream>
 #include "plf_bitsetb.h"
 
 
@@ -170,6 +171,32 @@ void to_string_test(const char *test_type)
 
 
 
+template <typename storage_type>
+void const_to_string_test(const char *test_type)
+{
+	plf::bitsetb<false, storage_type> values(77);
+	values.reset();
+	values.set(3);
+	values.set(76);
+
+	// to_string(), to_rstring() and operator << must all work on a const bitsetb:
+	const plf::bitsetb<false, storage_type> &const_values = values;
+	std::ostringstream stream;
+	stream << const_values;
+
+	std::string expected(77, '0'), expected_reverse(77, '0');
+	expected[76 - 3] = '1';
+	expected[0] = '1';
+	expected_reverse[3] = '1';
+	expected_reverse[76] = '1';
+
+	failpass(test_type, const_values.to_string() == expected && const_values.to_rstring() == expected_reverse && stream.str() == expected);
+}
+
+
+
+
+
 template <std::size_t total_size, typename storage_type>
 void exact_multiple_test(const char *test_type)
 {
@@ -233,6 +260,8 @@ int main()
 		to_string_test<77, unsigned char>("to_string/to_rstring test, 77 bits/unsigned char");
 		to_string_test<sizeof(std::size_t) * 8, std::size_t>("to_string/to_rstring test, one word/size_t");
 		to_string_test<200, std::size_t>("to_string/to_rstring test, 200 bits/size_t");
+		const_to_string_test<unsigned char>("const to_string/to_rstring/ostream test/unsigned char");
+		const_to_string_test<std::size_t>("const to_string/to_rstring/ostream test/size_t");
 		range_end_aligned_test<3, unsigned int>("Word-aligned range end test/unsigned int");
 		range_end_aligned_test<3, std::size_t>("Word-aligned range end test/size_t");
 		all_range_narrow_test<unsigned char>("all_range narrow storage test/unsigned char");
