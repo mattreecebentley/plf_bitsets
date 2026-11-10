@@ -161,8 +161,8 @@ public:
 
 	PLF_CONSTFUNC void set() PLF_NOEXCEPT
 	{
-		#ifdef PLF_CONSTEVAL_SUPPORT
-			if consteval
+		#ifdef PLF_CPP20_SUPPORT
+			if PLF_CONSTEVAL
 			{
 				std::fill_n(buffer, PLF_ARRAY_CAPACITY, std::numeric_limits<storage_type>::max()); // fill_n is very slow compared to memset under gcc, particularly in debug mode, but memset isn't constexpr
 			}
@@ -219,8 +219,8 @@ public:
 			buffer[begin_type_index] |= std::numeric_limits<storage_type>::max() << begin_subindex;
 
 			// Fill all intermediate storage_type's (if any):
-			#ifdef PLF_CONSTEVAL_SUPPORT
-				if consteval
+			#ifdef PLF_CPP20_SUPPORT
+				if PLF_CONSTEVAL
 				{
 					std::fill_n(buffer + begin_type_index + 1, (end_type_index - 1) - begin_type_index, std::numeric_limits<storage_type>::max());
 				}
@@ -257,8 +257,8 @@ public:
 
 	PLF_CONSTFUNC void reset() PLF_NOEXCEPT
 	{
-		#ifdef PLF_CONSTEVAL_SUPPORT
-			if consteval
+		#ifdef PLF_CPP20_SUPPORT
+			if PLF_CONSTEVAL
 			{
 				std::fill_n(buffer, PLF_ARRAY_CAPACITY, 0);
 			}
@@ -301,8 +301,8 @@ public:
 		{
 			buffer[begin_type_index] &= ~(std::numeric_limits<storage_type>::max() << begin_subindex);
 
-			#ifdef PLF_CONSTEVAL_SUPPORT
-				if consteval
+			#ifdef PLF_CPP20_SUPPORT
+				if PLF_CONSTEVAL
 				{
 					std::fill_n(buffer + begin_type_index + 1, (end_type_index - 1) - begin_type_index, 0);
 				}
@@ -881,8 +881,8 @@ public:
 				}
 			}
 
-			#ifdef PLF_CONSTEVAL_SUPPORT
-				if consteval
+			#ifdef PLF_CPP20_SUPPORT
+				if PLF_CONSTEVAL
 				{
 					std::fill_n(buffer + current, PLF_ARRAY_CAPACITY - current, 0);
 				}
@@ -951,8 +951,8 @@ public:
 				}
 			}
 
-			#ifdef PLF_CONSTEVAL_SUPPORT
-				if consteval
+			#ifdef PLF_CPP20_SUPPORT
+				if PLF_CONSTEVAL
 				{
 					std::fill_n(buffer + current, PLF_ARRAY_CAPACITY - current, 0);
 				}
@@ -1034,8 +1034,8 @@ public:
 			}
 		}
 
-		#ifdef PLF_CONSTEVAL_SUPPORT
-			if consteval
+		#ifdef PLF_CPP20_SUPPORT
+			if PLF_CONSTEVAL
 			{
 				std::fill_n(buffer, current, 0);
 			}
@@ -1063,15 +1063,10 @@ public:
 			std::basic_string<char> temp(total_size, zero);
 	#endif
 		#ifdef PLF_64BIT_SUPPORT
-			#ifdef PLF_CONSTEVAL_SUPPORT
-				if !consteval
-			#endif
+			if PLF_CONSTEXPR_NOT_CONSTEVAL(sizeof(zero) == 1)
 			{
-				if PLF_CONSTEXPR (sizeof(zero) == 1)
-				{
-					bits_to_chars<true, storage_type>(buffer, &temp[0], zero, one, total_size);
-					return temp;
-				}
+				bits_to_chars<true, storage_type>(buffer, &temp[0], zero, one, total_size);
+				return temp;
 			}
 		#endif
 
@@ -1109,15 +1104,10 @@ public:
 			std::basic_string<char> temp(total_size, zero);
 	#endif
 		#ifdef PLF_64BIT_SUPPORT
-			#ifdef PLF_CONSTEVAL_SUPPORT
-				if !consteval
-			#endif
+			if PLF_CONSTEXPR_NOT_CONSTEVAL(sizeof(zero) == 1)
 			{
-				if PLF_CONSTEXPR (sizeof(zero) == 1)
-				{
-					bits_to_chars<false, storage_type>(buffer, &temp[0], zero, one, total_size);
-					return temp;
-				}
+				bits_to_chars<false, storage_type>(buffer, &temp[0], zero, one, total_size);
+				return temp;
 			}
 		#endif
 
